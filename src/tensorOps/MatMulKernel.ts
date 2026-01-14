@@ -1,10 +1,8 @@
-import {TensorOp} from "./TensorOp";
+import {ceilDiv, Kernel} from "./Kernel";
 import {Tensor} from "../Tensor";
 import {TensorManager} from "../TensorManager";
 
-const ceilDiv = (a: number, b: number) => Math.floor((a + b - 1) / b);
-
-export class MatMulOp extends TensorOp {
+export class MatMulKernel extends Kernel {
 
 	static readonly MATMUL_OUTPUT = "matmul_out";
 	private readonly params = new Uint32Array(4);
@@ -14,7 +12,7 @@ export class MatMulOp extends TensorOp {
 		readonly device: GPUDevice,
 		readonly tm: TensorManager,
 	) {
-		super(device, MatMulOp.matmulWGSL);
+		super(device, MatMulKernel.matmulWGSL);
 
 		this.paramsBuf = device.createBuffer({
 			size: 16,
@@ -44,7 +42,7 @@ export class MatMulOp extends TensorOp {
 		const N = t1.shape[1];
 
 		out = out ?? this.tm.getTensorBuffer(
-			MatMulOp.MATMUL_OUTPUT,
+			MatMulKernel.MATMUL_OUTPUT,
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			[M, N]);
 

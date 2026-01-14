@@ -1,13 +1,12 @@
-/**
- * This file contains Tensor operations.
- *
- */
+export function ceilDiv(a: number, b: number) {
+	return Math.floor((a + b - 1) / b);
+}
 
 /**
  * This class has the internal state for the Tensor operations.
  * It contains a compute pipeline and a shader module for each operation.
  */
-export abstract class TensorOp {
+export abstract class Kernel {
 
 	readonly pipeline: GPUComputePipeline;
 	readonly module: GPUShaderModule;

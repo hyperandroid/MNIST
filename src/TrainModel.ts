@@ -1,6 +1,6 @@
 import {Model} from "./Model";
 import {GPUEnv} from "./GPUEnv";
-import {OpsRegistry} from "./tensorOps/OpsRegistry";
+import {KernelRegistry} from "./tensorOps/KernelRegistry";
 import {TensorManager} from "./TensorManager";
 
 /**
@@ -9,7 +9,7 @@ import {TensorManager} from "./TensorManager";
 await GPUEnv.init()
 
 const tm = new TensorManager(GPUEnv.device);
-const opsRegistry = new OpsRegistry(GPUEnv.device, tm);
+const opsRegistry = new KernelRegistry(GPUEnv.device, tm);
 
 
 /**

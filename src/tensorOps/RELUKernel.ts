@@ -1,10 +1,8 @@
-import {TensorOp} from "./TensorOp";
+import {ceilDiv, Kernel} from "./Kernel";
 import {Tensor} from "../Tensor";
 import {TensorManager} from "../TensorManager";
 
-const ceilDiv = (a: number, b: number) => Math.floor((a + b - 1) / b);
-
-export class RELUOp extends TensorOp {
+export class RELUKernel extends Kernel {
 
 	static readonly RELU_OUTPUT = "relu_out";
 	private readonly params = new Uint32Array(2);
@@ -14,7 +12,7 @@ export class RELUOp extends TensorOp {
 		readonly device: GPUDevice,
 		readonly tm: TensorManager,
 	) {
-		super(device, RELUOp.reluWGSL);
+		super(device, RELUKernel.reluWGSL);
 
 		this.paramsBuf = device.createBuffer({
 			size: 8,
@@ -42,7 +40,7 @@ export class RELUOp extends TensorOp {
 		this.device.queue.writeBuffer(this.paramsBuf, 0, this.params);
 
 		out = out ?? this.tm.getTensorBuffer(
-			RELUOp.RELU_OUTPUT,
+			RELUKernel.RELU_OUTPUT,
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			[M,N],
 		);
