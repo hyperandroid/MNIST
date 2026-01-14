@@ -1,14 +1,19 @@
 import {TensorOp} from "./TensorOp";
 import {Tensor} from "../Tensor";
+import {TensorManager} from "../TensorManager";
 
 const ceilDiv = (a: number, b: number) => Math.floor((a + b - 1) / b);
 
 export class MatMulOp extends TensorOp {
 
+	static readonly MATMUL_OUTPUT = "matmul_out";
 	private readonly params = new Uint32Array(4);
 	private readonly paramsBuf: GPUBuffer;
 
-	constructor(readonly device: GPUDevice) {
+	constructor(
+		readonly device: GPUDevice,
+		readonly tm: TensorManager,
+	) {
 		super(device, MatMulOp.matmulWGSL);
 
 		this.paramsBuf = device.createBuffer({
@@ -20,9 +25,13 @@ export class MatMulOp extends TensorOp {
 	run(
 		t0: Tensor,
 		t1: Tensor,
-		out: Tensor
-	) {
-		if (t0.shape.length !== 2 || t1.shape.length !== 2 || out.shape.length !== 2) {
+		out?: Tensor
+	): Tensor {
+		if (
+			t0.shape.length !== 2
+			|| t1.shape.length !== 2
+			|| (out !== undefined && out.shape.length !== 2)
+		) {
 			throw new Error("MatMul: expected 2D tensors");
 		}
 
@@ -33,6 +42,11 @@ export class MatMulOp extends TensorOp {
 		const M = t0.shape[0];
 		const K = t0.shape[1];
 		const N = t1.shape[1];
+
+		out = out ?? this.tm.getTensorBuffer(
+			MatMulOp.MATMUL_OUTPUT,
+			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+			[M, N]);
 
 		if (out.shape[0] !== M || out.shape[1] !== N) {
 			throw new Error("MatMul: invalid output dimensions");
@@ -66,6 +80,8 @@ export class MatMulOp extends TensorOp {
 		pass.end();
 
 		this.device.queue.submit([encoder.finish()]);
+
+		return out;
 	}
 
 	static matmulWGSL = `

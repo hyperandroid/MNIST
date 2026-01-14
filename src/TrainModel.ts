@@ -8,12 +8,9 @@ import {TensorManager} from "./TensorManager";
  */
 await GPUEnv.init()
 
-/**
- * Initialize the tensor operations registry.
- */
-const opsRegistry = new OpsRegistry(GPUEnv.device);
-
 const tm = new TensorManager(GPUEnv.device);
+const opsRegistry = new OpsRegistry(GPUEnv.device, tm);
+
 
 /**
  * test code
@@ -23,14 +20,13 @@ const M = 4096, K = 4096, N = 128;
 
 const aSize = M * K;
 const bSize = K * N;
-const cSize = M * N;
 
 // Initialize input tensors
 const A = new Float32Array(aSize);
 const B = new Float32Array(bSize);
 
 // Simple deterministic values (good for debugging)
-for (let i = 0; i < A.length; i++) A[i] = (i % 97) * 0.01;
+for (let i = 0; i < A.length; i++) A[i] = (i % 97) * 0.01 * (Math.random()<.5 ? 1 : -1);
 for (let i = 0; i < B.length; i++) B[i] = (i % 89) * 0.02;
 
 const t0 = tm.getTensorBuffer(
@@ -45,16 +41,13 @@ const t1 = tm.getTensorBuffer(
 	[K,N],
 	B,
 );
-const out = tm.getTensorBuffer(
-	"out",
-	GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC,
-	[M,N],
+
+const out = opsRegistry.relu.run(
+	opsRegistry.matmul.run(t0, t1)
 );
 
-opsRegistry.matmul.run(t0, t1, out);
-
-const output = await tm.readBuffer(out.buffer, out.sizeInBytes());
-console.log(output);
+const output2 = await tm.readBuffer(out.buffer, out.sizeInBytes());
+console.log(output2);
 
 /**
  * The train loop will look as follows:

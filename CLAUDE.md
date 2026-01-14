@@ -10,18 +10,45 @@ npm run dev    # Start Vite dev server
 
 ## Architecture
 
-This is a WebGPU-based tensor/matrix computation project for MNIST, built with TypeScript and Vite.
+WebGPU-based tensor computation library for MNIST, built with TypeScript and Vite.
 
-### Key Components
+### Core Components
 
-- **src/Tensor.ts**: Core Tensor class that wraps `Float32Array` with shape metadata. Supports 1D and 2D arrays with row-major storage layout.
+- **GPUEnv**: Singleton that initializes WebGPU device. Throws on failure. Must call `await GPUEnv.init()` before using `GPUEnv.device`.
 
-- **index.html**: Contains a WebGPU compute shader demo implementing tiled 16x16 matrix multiplication in WGSL. The shader uses workgroup shared memory for efficient tiled matmul (C = A × B).
+- **Tensor**: Wraps `GPUBuffer` with shape metadata. Row-major storage. Size computed via `shape.reduce((a, b) => a * b, 1)`.
+
+- **TensorManager**: Manages GPU buffer lifecycle. Handles buffer reuse, 256-byte alignment, readback buffers, and deferred destruction. Use `getTensorBuffer()` to create/reuse tensors by name.
+
+- **OpsRegistry**: Central registry for tensor operations. Instantiates all ops with shared device and TensorManager.
+
+### Tensor Operations Pattern
+
+All ops extend `TensorOp` base class which creates the shader module and compute pipeline.
+
+Ops follow a functional pattern—they return tensors, enabling composition:
+```typescript
+const out = opsRegistry.relu.run(
+    opsRegistry.matmul.run(t0, t1)
+);
+```
+
+Each op:
+1. Validates input tensor shapes (must be 2D)
+2. Auto-creates output buffer if not provided (via TensorManager)
+3. Writes params to uniform buffer
+4. Creates bind group, dispatches compute, submits to queue
+5. Returns output tensor
 
 ### WebGPU Compute Pattern
 
-The matmul shader follows the standard WebGPU compute pattern:
-1. Storage buffers for input matrices A, B and output C
-2. Uniform buffer for matrix dimensions (M, N, K)
-3. Workgroup-local tile arrays (16×16) with barrier synchronization
-4. Dispatch workgroups based on output dimensions: `(ceil(N/16), ceil(M/16), 1)`
+Shaders use 16×16 workgroup size. Dispatch: `(ceil(N/16), ceil(M/16), 1)`.
+
+MatMul uses tiled algorithm with workgroup-local shared memory and barrier synchronization for coalesced memory access.
+
+### Adding New Ops
+
+1. Create class extending `TensorOp` in `src/tensorOps/`
+2. Define WGSL shader as static string
+3. Add shape validation, params buffer, bind group creation
+4. Register in `OpsRegistry`
