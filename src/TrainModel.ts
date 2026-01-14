@@ -49,6 +49,18 @@ const out = opsRegistry.relu.run(
 const output2 = await tm.readBuffer(out.buffer, out.sizeInBytes());
 console.log(output2);
 
+
+const sm = tm.getTensorBuffer(
+	"softmax",
+	GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+	[1,10],
+	new Float32Array([0,1,2,3,4,5,6,7,8,9]),
+);
+
+const smout = opsRegistry.softmax.run(sm);
+const smout2 = await tm.readBuffer(smout.buffer, smout.sizeInBytes());
+console.log(smout2);
+
 /**
  * The train loop will look as follows:
  * + Forward pass
