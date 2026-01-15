@@ -1,8 +1,9 @@
-import {Model} from "./Model";
+import {Model} from "./model/Model";
 import {GPUEnv} from "./GPUEnv";
-import {KernelRegistry} from "./tensorOps/KernelRegistry";
-import {TensorManager} from "./TensorManager";
-import {MNISTDataSource} from "./DataSource";
+import {KernelRegistry} from "./tensor/kernel/KernelRegistry";
+import {TensorManager} from "./tensor/TensorManager";
+import {MNISTDatasource} from "./MNIST/MNISTDatasource";
+import {MNISTModel} from "./MNIST/MNISTModel";
 
 /**
  * Initialize the GPU. If not present, no training will be possible.
@@ -10,7 +11,7 @@ import {MNISTDataSource} from "./DataSource";
 await GPUEnv.init()
 
 const tm = new TensorManager(GPUEnv.device);
-const opsRegistry = new KernelRegistry(GPUEnv.device, tm);
+const kernelRegistry = new KernelRegistry(GPUEnv.device, tm);
 
 
 /**
@@ -43,8 +44,8 @@ const t1 = tm.getTensorBuffer(
 	B,
 );
 
-const out = opsRegistry.relu.run(
-	opsRegistry.matmul.run(t0, t1)
+const out = kernelRegistry.relu.run(
+	kernelRegistry.matmul.run(t0, t1)
 );
 
 const output2 = await tm.readBuffer(out.buffer, out.sizeInBytes());
@@ -58,27 +59,20 @@ const sm = tm.getTensorBuffer(
 	new Float32Array([0,1,2,3,4,5,6,7,8,9]),
 );
 
-const smout = opsRegistry.softmax.run(sm);
+const smout = kernelRegistry.softmax.run(sm);
 const smout2 = await tm.readBuffer(smout.buffer, smout.sizeInBytes());
 console.log(smout2);
 
-const datasource = new MNISTDataSource();
+const datasource = new MNISTDatasource();
 await datasource
 	.load()
-	.catch(e => {
+	.catch((e: Error) => {
 		throw new Error("Failed to load data source: " + e)
 	});
-
 
 datasource.showRandomImage(datasource.getRandomTrainImageData());
 datasource.showRandomImage(datasource.getRandomTestImageData());
 
-/**
- * The train loop will look as follows:
- * + Forward pass
- * + Calculate loss function
- * + Backward pass (gradient descent)
- * + Optimize weights
- */
-const model = new Model()
+
+const model = new MNISTModel(GPUEnv.device, tm, 32, 32, 0.001, datasource);
 

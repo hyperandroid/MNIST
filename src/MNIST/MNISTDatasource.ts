@@ -1,8 +1,40 @@
+import {Datasource} from "../model/Datasource";
+
+export interface DataSourceIterator {
+	hasNext(): boolean;
+	next(): number;
+
+	startBatch(): void;
+}
+
+class MNISTDataSourceIterator implements DataSourceIterator {
+
+	constructor(
+		private batchSize: number,
+		private data: Uint8Array,
+		private labels: Uint8Array,
+	) {
+
+	}
+
+    hasNext(): boolean {
+        throw new Error("Method not implemented.");
+    }
+
+    next(): number {
+        throw new Error("Method not implemented.");
+    }
+
+	startBatch(): void {
+
+	}
+}
+
 /**
  * A naive MNIST data source.
  * It loads in memory all training and test data.
  */
-export class MNISTDataSource {
+export class MNISTDatasource implements Datasource {
 
 	trainData: Uint8Array | null = null;
 	trainLabelsData: Uint8Array | null = null;
@@ -16,7 +48,18 @@ export class MNISTDataSource {
 	trainImagesCount = 60000;
 
 	constructor() {
+	}
 
+	getTrainIterator(batchSize: number): DataSourceIterator {
+		return this.getIterator(batchSize, this.trainData!, this.trainLabelsData!);
+	}
+
+	private getIterator(
+		batchSize: number,
+		data: Uint8Array,
+		labels: Uint8Array,
+	): DataSourceIterator {
+		return new MNISTDataSourceIterator(batchSize, data, labels);
 	}
 
 	async load() {
@@ -66,7 +109,13 @@ export class MNISTDataSource {
 		for(let i = 0; i < indices.length; i++) {
 			indices[i] = i;
 		}
-		return indices.sort(() => Math.random() - 0.5);
+
+		for (let i = size - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[indices[i], indices[j]] = [indices[j], indices[i]];
+		}
+
+		return indices;
 	}
 
 	getRandomTrainImageData(): Uint8Array {

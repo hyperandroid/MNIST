@@ -8,8 +8,10 @@ export class Tensor {
 
 	readonly size: number;
 
+	gradient?: Tensor;
+
 	/**
-	 * Direct build from existing data that is contiguous in memory. Shape it not set,
+	 * Direct build from existing data that is contiguous in memory. Shape if not set,
 	 * will be [1, initalData.length]
 	 *
 	 * @param buffer
@@ -26,5 +28,9 @@ export class Tensor {
 
 	sizeInBytes() {
 		return this.size * 4;
+	}
+
+	hasGradient() {
+		return this.gradient !== undefined;
 	}
 }

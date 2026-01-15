@@ -37,6 +37,10 @@ export class TensorManager {
 
 		// this buffer fits in the requested one
 		if (existing && existing.sizeInBytes() >= sizeBytes && existing.usage === usage) {
+			if (initialData) {
+				this.writeBufferF32(existing.buffer, initialData);
+			}
+
 			return existing;
 		}
 
