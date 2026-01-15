@@ -45,10 +45,11 @@ Each kernel:
 - **MatMulKernel**: Tiled 16×16 matrix multiplication with shared memory
 - **ReluKernel**: Element-wise ReLU activation
 - **SoftmaxKernel**: Per-row softmax with numerical stability (optimized for small N like MNIST's 10 classes)
+- **CrossEntropyKernel**: Per-sample cross-entropy loss. Takes predictions [M,N] and one-hot labels [M,N], outputs loss [M,1]
 
 ### WebGPU Compute Pattern
 
-Shaders use 16×16 workgroup size (except Softmax which uses 256×1). Dispatch: `(ceil(N/16), ceil(M/16), 1)`.
+Shaders use 16×16 workgroup size (except Softmax/CrossEntropy which use 256×1). Dispatch: `(ceil(N/16), ceil(M/16), 1)`.
 
 MatMul uses tiled algorithm with workgroup-local shared memory and barrier synchronization for coalesced memory access.
 
@@ -57,4 +58,4 @@ MatMul uses tiled algorithm with workgroup-local shared memory and barrier synch
 1. Create class extending `Kernel` in `src/tensorOps/`
 2. Define WGSL shader as static string
 3. Add shape validation, params buffer, bind group creation
-4. Register in `OpsRegistry`
+4. Register in `KernelRegistry`

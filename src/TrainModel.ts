@@ -2,6 +2,7 @@ import {Model} from "./Model";
 import {GPUEnv} from "./GPUEnv";
 import {KernelRegistry} from "./tensorOps/KernelRegistry";
 import {TensorManager} from "./TensorManager";
+import {MNISTDataSource} from "./DataSource";
 
 /**
  * Initialize the GPU. If not present, no training will be possible.
@@ -60,6 +61,17 @@ const sm = tm.getTensorBuffer(
 const smout = opsRegistry.softmax.run(sm);
 const smout2 = await tm.readBuffer(smout.buffer, smout.sizeInBytes());
 console.log(smout2);
+
+const datasource = new MNISTDataSource();
+await datasource
+	.load()
+	.catch(e => {
+		throw new Error("Failed to load data source: " + e)
+	});
+
+
+datasource.showRandomImage(datasource.getRandomTrainImageData());
+datasource.showRandomImage(datasource.getRandomTestImageData());
 
 /**
  * The train loop will look as follows:
