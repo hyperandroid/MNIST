@@ -57,27 +57,20 @@ export class Dropout implements Layer {
 
 		// Upload mask to GPU
 		const mask = this.tm.getTensorBuffer(
-			`${this.name}_mask`,
+			`${this.name}_mask_out`,
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
 			[M, N],
 			this.maskData,
 		);
 
 		// Ensure output buffer exists
-
 		const out = this.tm.getTensorBuffer(
-			`${this.name}_out`,
+			`${this.name}_dropout_out`,
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			[M, N],
 		);
 
-
 		return this.kr.dropout.run(input, mask, out);
-	}
-
-	backward(input: Tensor): void {
-		// During backward pass, apply the same mask to gradients
-		// TODO: implement when backward pass is needed
 	}
 
 	parameters(): Tensor[] {

@@ -1,6 +1,8 @@
 import {ceilDiv, Kernel} from "./Kernel";
 import {Tensor} from "../Tensor";
 import {TensorManager} from "../TensorManager";
+import {BiasAddBackward} from "../../autograd/backward/BiasAddBackward";
+import {KernelRegistry} from "./KernelRegistry";
 
 /**
  * Adds a 1D bias vector to each row of a 2D matrix.
@@ -11,15 +13,15 @@ import {TensorManager} from "../TensorManager";
  */
 export class BiasAddKernel extends Kernel {
 
-	static readonly BIASADD_OUTPUT = "biasadd_out";
 	private readonly params = new Uint32Array(2);
 	private readonly paramsBuf: GPUBuffer;
 
 	constructor(
 		readonly device: GPUDevice,
 		readonly tm: TensorManager,
+		readonly kr: KernelRegistry,
 	) {
-		super(device, BiasAddKernel.biasAddWGSL);
+		super(device, BiasAddKernel.biasAddWGSL, kr);
 
 		this.paramsBuf = device.createBuffer({
 			size: 8,
@@ -58,7 +60,7 @@ export class BiasAddKernel extends Kernel {
 		this.device.queue.writeBuffer(this.paramsBuf, 0, this.params);
 
 		out = out ?? this.tm.getTensorBuffer(
-			BiasAddKernel.BIASADD_OUTPUT,
+			`${input.name}_${bias.name}_out`,
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			[M, N],
 		);
@@ -84,6 +86,13 @@ export class BiasAddKernel extends Kernel {
 		pass.end();
 
 		this.device.queue.submit([encoder.finish()]);
+
+		// Autograd: track computation graph
+		if (input.requiresGradient || bias.requiresGradient) {
+			out.requiresGradient = true;
+			out.parents = [input, bias];
+			out.gradFn = new BiasAddBackward([input, bias], this.kr!);
+		}
 
 		return out;
 	}

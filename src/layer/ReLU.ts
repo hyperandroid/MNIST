@@ -13,9 +13,6 @@ export class ReLU implements Layer {
 
 	}
 
-	backward(input: Tensor): void {
-	}
-
 	forward(input: Tensor, isTraining: boolean): Tensor {
 
 		const output = this.tm.getTensorBuffer(

@@ -37,23 +37,21 @@ export class Linear implements Layer {
 		this.name = init.name;
 
 		this.weights = tm.getTensorBuffer(
-			`${init.name}_w`,
+			`${init.name}_weights`,
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			shape,
 			init.initializer(shape, init.inputFeatures),
 		);
+		this.weights.requiresGradient = true;
 
 		if (init.useBias) {
 			this.bias = tm.getTensorBuffer(
-				`${init.name}_b`,
+				`${init.name}_bias`,
 				GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
-				[init.outputFeatures],
+				[1, init.outputFeatures],
 			);
+			this.bias.requiresGradient = true;
 		}
-	}
-
-	backward(input: Tensor) {
-		// TODO
 	}
 
 	forward(input: Tensor, isTraining: boolean): Tensor {

@@ -49,7 +49,7 @@ export class TensorManager {
 				return existing;
 			}
 
-			const updated = new Tensor(existing.buffer, usage, shape);
+			const updated = new Tensor(name, existing.buffer, usage, shape);
 			this.tensors.set(name, updated);
 			return updated;
 		}
@@ -63,7 +63,7 @@ export class TensorManager {
 			this.pendingDestroy.push(existing.buffer);
 		}
 
-		const tensor = new Tensor(newBuf, usage, shape);
+		const tensor = new Tensor(name, newBuf, usage, shape);
 		this.tensors.set(name, tensor);
 
 		if (initialData) {
@@ -123,6 +123,19 @@ export class TensorManager {
 		};
 
 		return buffer;
+	}
+
+	ones(shape: number[], name: string = "ones") {
+		const buf = this.getTensorBuffer(
+			name,
+			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+			shape);
+		this.writeBufferF32(buf.buffer, new Float32Array(shape.reduce((a, b) => a * b, 1)).fill(1));
+		return buf;
+	}
+
+	zeros(buf: Tensor) {
+		this.writeBufferF32(buf.buffer, new Float32Array(buf.size).fill(1));
 	}
 
 	async flushDestroyQueue() {

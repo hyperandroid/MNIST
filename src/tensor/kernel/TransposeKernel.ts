@@ -1,12 +1,16 @@
 import {ceilDiv, Kernel} from "./Kernel";
 import {Tensor} from "../Tensor";
 import {TensorManager} from "../TensorManager";
-import {ReLUBackward} from "../../autograd/backward/ReLUBackward";
 import {KernelRegistry} from "./KernelRegistry";
 
-export class RELUKernel extends Kernel {
+/**
+ * Transpose a 2D matrix.
+ *
+ * Input:  [M, N]
+ * Output: [N, M] where output[j,i] = input[i,j]
+ */
+export class TransposeKernel extends Kernel {
 
-	static readonly RELU_OUTPUT = "relu_out";
 	private readonly params = new Uint32Array(2);
 	private readonly paramsBuf: GPUBuffer;
 
@@ -15,7 +19,7 @@ export class RELUKernel extends Kernel {
 		readonly tm: TensorManager,
 		readonly kr: KernelRegistry,
 	) {
-		super(device, RELUKernel.reluWGSL, kr);
+		super(device, TransposeKernel.transposeWGSL, kr);
 
 		this.paramsBuf = device.createBuffer({
 			size: 8,
@@ -24,40 +28,39 @@ export class RELUKernel extends Kernel {
 	}
 
 	run(
-		t0: Tensor,
+		input: Tensor,
 		out?: Tensor,
 	): Tensor {
-
-		if (
-			t0.shape.length !== 2
-			|| (out !== undefined && out.shape.length !== 2)
-		) {
-			throw new Error("RELU: expected 2D tensor");
+		if (input.shape.length !== 2) {
+			throw new Error("Transpose: input must be 2D tensor");
 		}
 
-		const M = t0.shape[0];
-		const N = t0.shape[1];
+		const M = input.shape[0];
+		const N = input.shape[1];
 
 		this.params[0] = M;
 		this.params[1] = N;
 		this.device.queue.writeBuffer(this.paramsBuf, 0, this.params);
 
 		out = out ?? this.tm.getTensorBuffer(
-			`${t0.name}_out`,
+			`${input.name}_T`,
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
-			[M,N],
+			[N, M],
 		);
+
+		if (out.shape[0] !== N || out.shape[1] !== M) {
+			throw new Error("Transpose: output shape must be [N, M]");
+		}
 
 		const bindGroup = this.device.createBindGroup({
 			layout: this.pipeline.getBindGroupLayout(0),
 			entries: [
-				{binding: 0, resource: {buffer: t0.buffer}},
+				{binding: 0, resource: {buffer: input.buffer}},
 				{binding: 1, resource: {buffer: out.buffer}},
 				{binding: 2, resource: {buffer: this.paramsBuf}},
 			],
 		});
 
-		// Dispatch
 		const wgX = ceilDiv(N, 16);
 		const wgY = ceilDiv(M, 16);
 
@@ -70,43 +73,32 @@ export class RELUKernel extends Kernel {
 
 		this.device.queue.submit([encoder.finish()]);
 
-		// Autograd: track computation graph
-		// Save input for backward (needed to compute mask X > 0)
-		if (t0.requiresGradient) {
-			out.requiresGradient = true;
-			out.parents = [t0];
-			out.gradFn = new ReLUBackward([t0], this.kr!);
-		}
-
 		return out;
 	}
 
-	static reluWGSL = `
-    	// RELU: remove negative values from a tensor.
-
+	static transposeWGSL = `
 		struct Params {
 		  M : u32,
 		  N : u32,
 		};
-		
-		@group(0) @binding(0) var<storage, read> A : array<f32>;
-		@group(0) @binding(1) var<storage, read_write> B : array<f32>;
-		@group(0) @binding(2) var<uniform> params : Params;
-		
-		@compute @workgroup_size(16, 16, 1)
-		fn main(
-		  @builtin(global_invocation_id) gid : vec3<u32>,
-		) {
-		  let row : u32 = gid.y;
-		  let col : u32 = gid.x;
-		
-		  let inBounds : bool = (row < params.M) && (col < params.N);
 
-		  // Only write valid output elements
-		  if (inBounds) {
-		  	let f: f32 = A[row * params.N + col];
-			B[row * params.N + col] = max(0f, f);
-		  }
+		@group(0) @binding(0) var<storage, read> input : array<f32>;
+		@group(0) @binding(1) var<storage, read_write> output : array<f32>;
+		@group(0) @binding(2) var<uniform> params : Params;
+
+		@compute @workgroup_size(16, 16, 1)
+		fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
+			let col : u32 = gid.x;  // output column = input row
+			let row : u32 = gid.y;  // output row = input column
+
+			if (row >= params.M || col >= params.N) {
+				return;
+			}
+
+			// input[row, col] -> output[col, row]
+			let inIdx = row * params.N + col;
+			let outIdx = col * params.M + row;
+			output[outIdx] = input[inIdx];
 		}
 	`;
 }

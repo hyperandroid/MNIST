@@ -1,18 +1,20 @@
 import {ceilDiv, Kernel} from "./Kernel";
 import {Tensor} from "../Tensor";
 import {TensorManager} from "../TensorManager";
+import {MatMulBackward} from "../../autograd/backward/MatMulBackward";
+import {KernelRegistry} from "./KernelRegistry";
 
 export class MatMulKernel extends Kernel {
 
-	static readonly MATMUL_OUTPUT = "matmul_out";
 	private readonly params = new Uint32Array(4);
 	private readonly paramsBuf: GPUBuffer;
 
 	constructor(
 		readonly device: GPUDevice,
 		readonly tm: TensorManager,
+		readonly kr: KernelRegistry,
 	) {
-		super(device, MatMulKernel.matmulWGSL);
+		super(device, MatMulKernel.matmulWGSL, kr);
 
 		this.paramsBuf = device.createBuffer({
 			size: 16,
@@ -42,7 +44,7 @@ export class MatMulKernel extends Kernel {
 		const N = t1.shape[1];
 
 		out = out ?? this.tm.getTensorBuffer(
-			MatMulKernel.MATMUL_OUTPUT,
+			`${t0.name}_${t1.name}_out`,
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			[M, N]);
 
@@ -78,6 +80,13 @@ export class MatMulKernel extends Kernel {
 		pass.end();
 
 		this.device.queue.submit([encoder.finish()]);
+
+		// Autograd: track computation graph
+		if (t0.requiresGradient || t1.requiresGradient) {
+			out.requiresGradient = true;
+			out.parents = [t0, t1];
+			out.gradFn = new MatMulBackward([t0, t1], this.kr!);
+		}
 
 		return out;
 	}

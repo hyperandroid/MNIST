@@ -1,6 +1,8 @@
 import {Kernel, ceilDiv} from "./Kernel";
 import {Tensor} from "../Tensor";
 import {TensorManager} from "../TensorManager";
+import type {KernelRegistry} from "./KernelRegistry";
+import {SoftmaxBackward} from "../../autograd/backward/SoftmaxBackward";
 
 /**
  * Per sample softmax.
@@ -10,15 +12,15 @@ import {TensorManager} from "../TensorManager";
  */
 export class SoftmaxKernel extends Kernel {
 
-	static readonly SOFTMAX_OUTPUT = "softmax_out";
 	private readonly params = new Uint32Array(2);
 	private readonly paramsBuf: GPUBuffer;
 
 	constructor(
 		readonly device: GPUDevice,
 		readonly tm: TensorManager,
+		readonly kr: KernelRegistry,
 	) {
-		super(device, SoftmaxKernel.softmaxWGSL);
+		super(device, SoftmaxKernel.softmaxWGSL, kr);
 
 		this.paramsBuf = device.createBuffer({
 			size: 8,
@@ -42,7 +44,7 @@ export class SoftmaxKernel extends Kernel {
 		this.device.queue.writeBuffer(this.paramsBuf, 0, this.params);
 
 		out = out ?? this.tm.getTensorBuffer(
-			SoftmaxKernel.SOFTMAX_OUTPUT,
+			`${t0.name}_out`,
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			[M, N],
 		);
@@ -65,6 +67,16 @@ export class SoftmaxKernel extends Kernel {
 
 		this.device.queue.submit([encoder.finish()]);
 
+		// Autograd: track computation graph
+		// Save input for backward. Note: Softmax backward is typically
+		// handled via combined SoftmaxCrossEntropy for numerical stability.
+		if (t0.requiresGradient) {
+			out.requiresGradient = true;
+			out.parents = [t0];
+			// Store both input and output for flexible backward computation
+			out.gradFn = new SoftmaxBackward([t0, out], this.kr!);
+		}
+
 		return out;
 	}
 
@@ -84,8 +96,8 @@ export class SoftmaxKernel extends Kernel {
 		@compute @workgroup_size(256, 1, 1)
 		fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
 			let row = gid.x;
-			if (row >= params.M) { 
-				return; 
+			if (row >= params.M) {
+				return;
 			}
 
 			let N = params.N;

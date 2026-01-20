@@ -1,6 +1,8 @@
 import {ceilDiv, Kernel} from "./Kernel";
 import {Tensor} from "../Tensor";
 import {TensorManager} from "../TensorManager";
+import {KernelRegistry} from "./KernelRegistry";
+import {DropoutBackward} from "../../autograd/backward/DropoutBackward";
 
 /**
  * Applies element-wise dropout by multiplying input with a pre-computed mask.
@@ -11,15 +13,15 @@ import {TensorManager} from "../TensorManager";
  */
 export class DropoutKernel extends Kernel {
 
-	static readonly DROPOUT_OUTPUT = "dropout_out";
 	private readonly params = new Uint32Array(2);
 	private readonly paramsBuf: GPUBuffer;
 
 	constructor(
 		readonly device: GPUDevice,
 		readonly tm: TensorManager,
+		readonly kr: KernelRegistry,
 	) {
-		super(device, DropoutKernel.dropoutWGSL);
+		super(device, DropoutKernel.dropoutWGSL, kr);
 
 		this.paramsBuf = device.createBuffer({
 			size: 8,
@@ -53,7 +55,7 @@ export class DropoutKernel extends Kernel {
 		this.device.queue.writeBuffer(this.paramsBuf, 0, this.params);
 
 		out = out ?? this.tm.getTensorBuffer(
-			DropoutKernel.DROPOUT_OUTPUT,
+			`${input.name}_${mask.name}_out`,
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			[M, N],
 		);
@@ -79,6 +81,14 @@ export class DropoutKernel extends Kernel {
 		pass.end();
 
 		this.device.queue.submit([encoder.finish()]);
+
+		// Autograd: track computation graph
+		// Save mask for backward (same mask applied to gradients)
+		if (input.requiresGradient) {
+			out.requiresGradient = true;
+			out.parents = [input];
+			out.gradFn = new DropoutBackward([mask], this.kr!);
+		}
 
 		return out;
 	}

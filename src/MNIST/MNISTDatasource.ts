@@ -52,15 +52,18 @@ export class MNISTDataSourceIterator {
 
 		for (let i = 0; i < bs; i++) {
 			const index = this.datasetIndices[this.currentIndex++];
-			const imageIndex = index * this.oneImageSize;
-			const labelIndex = index * this.oneLabelSize;
 
+			const imageIndex = index * this.oneImageSize;
 			this.workingImageBuffer.set(
 				this.imageData.subarray(imageIndex, imageIndex + this.oneImageSize),
 				i * this.oneImageSize
 			);
 
-			this.workingLabelBuffer[i] = this.labelsData[labelIndex];
+			const labelIndex = index * this.oneLabelSize;
+			this.workingLabelBuffer.set(
+				this.labelsData.subarray(labelIndex, labelIndex + this.oneLabelSize),
+				i * this.oneLabelSize
+			);
 		}
 
 		return {
@@ -68,7 +71,7 @@ export class MNISTDataSourceIterator {
 				this.workingImageBuffer.subarray(0, bs * this.oneImageSize) :
 				this.workingImageBuffer,
 			labels: bs < this.batchSize ?
-				this.workingLabelBuffer.subarray(0, bs) :
+				this.workingLabelBuffer.subarray(0, bs * this.oneLabelSize) :
 				this.workingLabelBuffer,
 			size: bs,
 		};
@@ -122,10 +125,10 @@ export class MNISTDatasource implements Datasource {
 	constructor() {
 	}
 
-	private toFloat32(uint: Uint8Array, div = true): Float32Array {
+	private toFloat32(uint: Uint8Array): Float32Array {
 		const ret = new Float32Array(uint.length);
 		for (let i = 0; i < uint.length; i++) {
-			ret[i] = uint[i] / (div ? 255 : 1);
+			ret[i] = uint[i] / 255;
 		}
 		return ret;
 	}
@@ -140,7 +143,7 @@ export class MNISTDatasource implements Datasource {
 			data,
 			28 * 28,
 			labels,
-			1
+			10
 		);
 	}
 
@@ -158,16 +161,27 @@ export class MNISTDatasource implements Datasource {
 		return this.getIterator(batchSize, this.testData, this.testLabelsData);
 	}
 
+	private onehot(uint: Uint8Array): Float32Array {
+		const output = new Float32Array(uint.length * 10);
+
+		for (let i = 0; i < uint.length; i++) {
+			const index = uint[i];
+			output[i * 10 + index] = 1.0;
+		}
+
+		return output;
+	}
+
 	async load() {
 		const trainImagesResponse = await fetch("data/train-images.idx3-ubyte")
 		this.trainData = this.toFloat32(new Uint8Array(await trainImagesResponse.arrayBuffer(), 16));
 		const trainLabelsResponse = await fetch("data/train-labels.idx1-ubyte");
-		this.trainLabelsData = this.toFloat32(new Uint8Array(await trainLabelsResponse.arrayBuffer(), 8), false);
+		this.trainLabelsData = this.onehot(new Uint8Array(await trainLabelsResponse.arrayBuffer(), 8));
 
 		const testDataResponse = await fetch("data/t10k-images.idx3-ubyte");
 		this.testData = this.toFloat32(new Uint8Array(await testDataResponse.arrayBuffer(), 16));
 		const testLabelsResponse = await fetch("data/t10k-labels.idx1-ubyte");
-		this.testLabelsData = this.toFloat32(new Uint8Array(await testLabelsResponse.arrayBuffer(), 8), false);
+		this.testLabelsData = this.onehot(new Uint8Array(await testLabelsResponse.arrayBuffer(), 8));
 
 		this.testImagesCount = this.testData.length / this.testImageSize;
 		this.trainImagesCount = this.trainData.length / this.testImageSize;

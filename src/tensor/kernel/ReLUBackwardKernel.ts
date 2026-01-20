@@ -1,10 +1,18 @@
 import {ceilDiv, Kernel} from "./Kernel";
 import {Tensor} from "../Tensor";
 import {TensorManager} from "../TensorManager";
-import {MatAddBackward} from "../../autograd/backward/MatAddBackward";
 import {KernelRegistry} from "./KernelRegistry";
 
-export class MatAddKernel extends Kernel {
+/**
+ * ReLU backward kernel.
+ *
+ * Computes: gradInput = gradOutput * (input > 0)
+ *
+ * Input gradOutput: [M, N]
+ * Input savedInput: [M, N] (the original input to ReLU forward)
+ * Output gradInput: [M, N]
+ */
+export class ReLUBackwardKernel extends Kernel {
 
 	private readonly params = new Uint32Array(2);
 	private readonly paramsBuf: GPUBuffer;
@@ -14,7 +22,7 @@ export class MatAddKernel extends Kernel {
 		readonly tm: TensorManager,
 		readonly kr: KernelRegistry,
 	) {
-		super(device, MatAddKernel.matAddWGSL, kr);
+		super(device, ReLUBackwardKernel.reluBackwardWGSL, kr);
 
 		this.paramsBuf = device.createBuffer({
 			size: 8,
@@ -23,32 +31,28 @@ export class MatAddKernel extends Kernel {
 	}
 
 	run(
-		t0: Tensor,
-		t1: Tensor,
+		gradOutput: Tensor,
+		savedInput: Tensor,
 		out?: Tensor,
 	): Tensor {
-
-		if (
-			t0.shape.length !== 2
-			|| t1.shape.length !== 2
-			|| (out !== undefined && out.shape.length !== 2)
-		) {
-			throw new Error("MatAdd: expected 2D tensors");
+		if (gradOutput.shape.length !== 2 || savedInput.shape.length !== 2) {
+			throw new Error("ReLUBackward: inputs must be 2D tensors");
 		}
 
-		if (t0.shape[0] !== t1.shape[0] || t0.shape[1] !== t1.shape[1]) {
-			throw new Error("MatAdd: tensor shapes must match");
+		if (gradOutput.shape[0] !== savedInput.shape[0] ||
+			gradOutput.shape[1] !== savedInput.shape[1]) {
+			throw new Error("ReLUBackward: shapes must match");
 		}
 
-		const M = t0.shape[0];
-		const N = t0.shape[1];
+		const M = gradOutput.shape[0];
+		const N = gradOutput.shape[1];
 
 		this.params[0] = M;
 		this.params[1] = N;
 		this.device.queue.writeBuffer(this.paramsBuf, 0, this.params);
 
 		out = out ?? this.tm.getTensorBuffer(
-			`${t0.name}_${t1.name}_out`,
+			`${gradOutput.name}_relu_bwd`,
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			[M, N],
 		);
@@ -56,8 +60,8 @@ export class MatAddKernel extends Kernel {
 		const bindGroup = this.device.createBindGroup({
 			layout: this.pipeline.getBindGroupLayout(0),
 			entries: [
-				{binding: 0, resource: {buffer: t0.buffer}},
-				{binding: 1, resource: {buffer: t1.buffer}},
+				{binding: 0, resource: {buffer: gradOutput.buffer}},
+				{binding: 1, resource: {buffer: savedInput.buffer}},
 				{binding: 2, resource: {buffer: out.buffer}},
 				{binding: 3, resource: {buffer: this.paramsBuf}},
 			],
@@ -75,38 +79,33 @@ export class MatAddKernel extends Kernel {
 
 		this.device.queue.submit([encoder.finish()]);
 
-		// Autograd: track computation graph
-		if (t0.requiresGradient || t1.requiresGradient) {
-			out.requiresGradient = true;
-			out.parents = [t0, t1];
-			out.gradFn = new MatAddBackward([t0, t1], this.kr!);
-		}
-
 		return out;
 	}
 
-	static matAddWGSL = `
+	static reluBackwardWGSL = `
 		struct Params {
 		  M : u32,
 		  N : u32,
 		};
 
-		@group(0) @binding(0) var<storage, read> A : array<f32>;
-		@group(0) @binding(1) var<storage, read> B : array<f32>;
-		@group(0) @binding(2) var<storage, read_write> C : array<f32>;
+		@group(0) @binding(0) var<storage, read> gradOutput : array<f32>;
+		@group(0) @binding(1) var<storage, read> savedInput : array<f32>;
+		@group(0) @binding(2) var<storage, read_write> gradInput : array<f32>;
 		@group(0) @binding(3) var<uniform> params : Params;
 
 		@compute @workgroup_size(16, 16, 1)
-		fn main(
-		  @builtin(global_invocation_id) gid : vec3<u32>,
-		) {
-		  let row : u32 = gid.y;
-		  let col : u32 = gid.x;
+		fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
+			let col = gid.x;
+			let row = gid.y;
 
-		  if (row < params.M && col < params.N) {
-		    let idx : u32 = row * params.N + col;
-		    C[idx] = A[idx] + B[idx];
-		  }
+			if (row >= params.M || col >= params.N) {
+				return;
+			}
+
+			let idx = row * params.N + col;
+			// gradient flows through only where input > 0
+			let mask = select(0.0, 1.0, savedInput[idx] > 0.0);
+			gradInput[idx] = gradOutput[idx] * mask;
 		}
 	`;
 }

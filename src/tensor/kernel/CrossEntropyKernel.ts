@@ -1,6 +1,8 @@
 import {Kernel, ceilDiv} from "./Kernel";
 import {Tensor} from "../Tensor";
 import {TensorManager} from "../TensorManager";
+import {SoftmaxCrossEntropyBackward} from "../../autograd/backward/SoftmaxCrossEntropyBackward";
+import {KernelRegistry} from "./KernelRegistry";
 
 /**
  * Cross Entropy Loss kernel.
@@ -12,15 +14,15 @@ import {TensorManager} from "../TensorManager";
  */
 export class CrossEntropyKernel extends Kernel {
 
-	static readonly CROSS_ENTROPY_OUTPUT = "xentropy_out";
 	private readonly params = new Uint32Array(2);
 	private readonly paramsBuf: GPUBuffer;
 
 	constructor(
 		readonly device: GPUDevice,
 		readonly tm: TensorManager,
+		readonly kr: KernelRegistry,
 	) {
-		super(device, CrossEntropyKernel.xentropyWGSL);
+		super(device, CrossEntropyKernel.xentropyWGSL, kr);
 
 		this.paramsBuf = device.createBuffer({
 			size: 8,
@@ -51,7 +53,7 @@ export class CrossEntropyKernel extends Kernel {
 		this.device.queue.writeBuffer(this.paramsBuf, 0, this.params);
 
 		out = out ?? this.tm.getTensorBuffer(
-			CrossEntropyKernel.CROSS_ENTROPY_OUTPUT,
+			`${predictions.name}_${labels.name}_out`,
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			[M, 1],
 		);
@@ -74,6 +76,15 @@ export class CrossEntropyKernel extends Kernel {
 		pass.end();
 
 		this.device.queue.submit([encoder.finish()]);
+
+		// Autograd: track computation graph
+		// Use combined SoftmaxCrossEntropy backward for numerical stability
+		// (assumes predictions came from softmax)
+		if (predictions.requiresGradient) {
+			out.requiresGradient = true;
+			out.parents = [predictions];
+			out.gradFn = new SoftmaxCrossEntropyBackward([predictions, labels], this.kr!);
+		}
 
 		return out;
 	}
