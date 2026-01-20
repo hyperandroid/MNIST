@@ -1,102 +1,80 @@
 import {Datasource} from "../model/Datasource";
 
-export interface DataSourceIterator {
-	hasNext(): boolean;
-	next(): number;
 
-	startBatch(): void;
+export interface MNISTDataSourceIteratorValue {
+	data: Float32Array;
+	labels: Float32Array;
+	size: number;
 }
 
-class MNISTDataSourceIterator implements DataSourceIterator {
+export class MNISTDataSourceIterator {
+
+	private currentIndex = 0;
+	private iteratorSize = 0;
+	private datasetIndices: Uint32Array = new Uint32Array(0);
+
+	private readonly workingImageBuffer: Float32Array;
+	private readonly workingLabelBuffer: Float32Array;
 
 	constructor(
-		private batchSize: number,
-		private data: Uint8Array,
-		private labels: Uint8Array,
+		readonly batchSize: number,
+		private imageData: Float32Array,
+		private oneImageSize: number,
+		private labelsData: Float32Array,
+		private oneLabelSize: number,
 	) {
+		this.workingImageBuffer = new Float32Array(oneImageSize * this.batchSize);
+		this.workingLabelBuffer = new Float32Array(oneLabelSize * this.batchSize);
 
+		const trainImageElemets = this.imageData.length / oneImageSize;
+		const trainLabelElemets = this.labelsData.length / oneLabelSize;
+
+		if (trainImageElemets !== trainLabelElemets) {
+			throw new Error("MNIST data source: image and label data have different sizes");
+		}
+
+		this.iteratorSize = trainLabelElemets;
+
+		this.restart();
 	}
 
     hasNext(): boolean {
-        throw new Error("Method not implemented.");
-    }
-
-    next(): number {
-        throw new Error("Method not implemented.");
-    }
-
-	startBatch(): void {
-
-	}
-}
-
-/**
- * A naive MNIST data source.
- * It loads in memory all training and test data.
- */
-export class MNISTDatasource implements Datasource {
-
-	trainData: Uint8Array | null = null;
-	trainLabelsData: Uint8Array | null = null;
-
-	testData: Uint8Array | null = null;
-	testLabelsData: Uint8Array | null = null;
-
-	testImageSize = 28*28;
-	testImagesCount = 10000;
-
-	trainImagesCount = 60000;
-
-	constructor() {
-	}
-
-	getTrainIterator(batchSize: number): DataSourceIterator {
-		return this.getIterator(batchSize, this.trainData!, this.trainLabelsData!);
-	}
-
-	private getIterator(
-		batchSize: number,
-		data: Uint8Array,
-		labels: Uint8Array,
-	): DataSourceIterator {
-		return new MNISTDataSourceIterator(batchSize, data, labels);
-	}
-
-	async load() {
-		const trainImagesResponse = await fetch("data/train-images.idx3-ubyte")
-		this.trainData = new Uint8Array(await trainImagesResponse.arrayBuffer(), 16);
-		const trainLabelsResponse = await fetch("data/train-labels.idx1-ubyte");
-		this.trainLabelsData = new Uint8Array(await trainLabelsResponse.arrayBuffer(), 8);
-
-		const testDataResponse = await fetch("data/t10k-images.idx3-ubyte");
-		this.testData = new Uint8Array(await testDataResponse.arrayBuffer(), 16);
-		const testLabelsResponse = await fetch("data/t10k-labels.idx1-ubyte");
-		this.testLabelsData = new Uint8Array(await testLabelsResponse.arrayBuffer(), 8);
-
-		this.testImagesCount = this.testData.byteLength / this.testImageSize;
-		this.trainImagesCount = this.trainData.byteLength / this.testImageSize;
-
-		console.log(`Test images count ${this.testImagesCount}`);
-		console.log(`Train images count ${this.trainImagesCount}`);
-		console.log(this.testImageSize);
+		return this.currentIndex < this.iteratorSize;
 	}
 
 	/**
-	 * generate a random train dataset of size N.
-	 * @param N the size of the dataset.
-	 * @returns a Uint32Array of indices of the dataset.
+	 * populate working buffers with the next batch of data.
+	 * @returns the next batch of data.
 	 */
-	getRandomTrainDataset(): Uint32Array {
-		return this.getRandomDataset(this.trainData!.length);
+    next(): MNISTDataSourceIteratorValue {
+
+		const bs = Math.min(this.batchSize, this.iteratorSize - this.currentIndex);
+
+		for (let i = 0; i < bs; i++) {
+			const index = this.datasetIndices[this.currentIndex++];
+			const imageIndex = index * this.oneImageSize;
+			const labelIndex = index * this.oneLabelSize;
+
+			this.workingImageBuffer.set(
+				this.imageData.subarray(imageIndex, imageIndex + this.oneImageSize),
+				i * this.oneImageSize
+			);
+
+			this.workingLabelBuffer[i] = this.labelsData[labelIndex];
+		}
+
+		return {
+			data: this.workingImageBuffer,
+			labels: this.workingLabelBuffer,
+			size: bs,
+		};
 	}
 
-	/**
-	 * generate a random test dataset of size N.
-	 * @param N the size of the dataset.
-	 * @returns a Uint32Array of indices of the dataset.
-	 */
-	getRandomTestDataset(): Uint32Array {
-		return this.getRandomDataset(this.testData!.length);
+	restart(): void {
+		this.currentIndex = 0;
+		this.datasetIndices = MNISTDataSourceIterator.getRandomDataset(
+			this.imageData.length / this.oneImageSize
+		);
 	}
 
 	/**
@@ -104,7 +82,7 @@ export class MNISTDatasource implements Datasource {
 	 * @param size
 	 * @private
 	 */
-	private getRandomDataset(size: number): Uint32Array {
+	static getRandomDataset(size: number): Uint32Array {
 		const indices = new Uint32Array(size);
 		for(let i = 0; i < indices.length; i++) {
 			indices[i] = i;
@@ -118,20 +96,78 @@ export class MNISTDatasource implements Datasource {
 		return indices;
 	}
 
-	getRandomTrainImageData(): Uint8Array {
-		return this.getRandomImageData(this.trainData!, this.trainImagesCount);
+}
+
+/**
+ * A naive MNIST data source.
+ * It loads in memory all training and test data.
+ */
+export class MNISTDatasource implements Datasource {
+
+	trainData: Float32Array | null = null;
+	trainLabelsData: Float32Array | null = null;
+
+	testData: Float32Array | null = null;
+	testLabelsData: Float32Array | null = null;
+
+	testImageSize = 28 * 28;
+	testImagesCount = 10000;
+
+	trainImagesCount = 60000;
+
+	constructor() {
 	}
 
-	getRandomTestImageData(): Uint8Array {
-		return this.getRandomImageData(this.testData!, this.testImagesCount);
+	private toFloat32(uint: Uint8Array, div = true): Float32Array {
+		const ret = new Float32Array(uint.length);
+		for (let i = 0; i < uint.length; i++) {
+			ret[i] = uint[i] / (div ? 255 : 1);
+		}
+		return ret;
 	}
 
-	private getRandomImageData(source: Uint8Array, numImages: number) {
-		const index = Math.floor(Math.random() * numImages);
-		return source!.subarray(this.testImageSize * index, this.testImageSize * (index + 1));
+	private getIterator(
+		batchSize: number,
+		data: Float32Array,
+		labels: Float32Array,
+	): MNISTDataSourceIterator {
+		return new MNISTDataSourceIterator(
+			batchSize,
+			data,
+			28 * 28,
+			labels,
+			1
+		);
 	}
 
-	showRandomImage(data: Uint8Array) {
+	getTrainIterator(batchSize: number): MNISTDataSourceIterator {
+		return this.getIterator(batchSize, this.trainData!, this.trainLabelsData!);
+	}
+
+	getTestIterator(batchSize: number): MNISTDataSourceIterator {
+		return this.getIterator(batchSize, this.testData!, this.testLabelsData!);
+	}
+
+	async load() {
+		const trainImagesResponse = await fetch("data/train-images.idx3-ubyte")
+		this.trainData = this.toFloat32(new Uint8Array(await trainImagesResponse.arrayBuffer(), 16));
+		const trainLabelsResponse = await fetch("data/train-labels.idx1-ubyte");
+		this.trainLabelsData = this.toFloat32(new Uint8Array(await trainLabelsResponse.arrayBuffer(), 8), false);
+
+		const testDataResponse = await fetch("data/t10k-images.idx3-ubyte");
+		this.testData = this.toFloat32(new Uint8Array(await testDataResponse.arrayBuffer(), 16));
+		const testLabelsResponse = await fetch("data/t10k-labels.idx1-ubyte");
+		this.testLabelsData = this.toFloat32(new Uint8Array(await testLabelsResponse.arrayBuffer(), 8), false);
+
+		this.testImagesCount = this.testData.length / this.testImageSize;
+		this.trainImagesCount = this.trainData.length / this.testImageSize;
+
+		console.log(`Test images count ${this.testImagesCount}`);
+		console.log(`Train images count ${this.trainImagesCount}`);
+		console.log(this.testImageSize);
+	}
+
+	static ShowRandomImage(data: Float32Array) {
 		const canvas = document.createElement("canvas");
 		canvas.width = 28 * 10;
 		canvas.height = 28 * 10;
@@ -140,7 +176,7 @@ export class MNISTDatasource implements Datasource {
 		for (let r = 0; r < 28; r++) {
 			for (let c = 0; c < 28; c++) {
 				const index = r * 28 + c;
-				const value = data[index];
+				const value = Math.floor(data[index] * 255);
 				ctx.fillStyle = `rgba(${value}, ${value}, ${value}, 1)`;
 				ctx.fillRect(c * 10, r * 10, 10, 10);
 			}

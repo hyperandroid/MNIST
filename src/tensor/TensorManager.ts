@@ -35,13 +35,23 @@ export class TensorManager {
 
 		const sizeBytes = shape.reduce((a, b) => a * b, 1) * 4;
 
-		// this buffer fits in the requested one
+		// this buffer fits in the requested one - reuse buffer but update shape
 		if (existing && existing.sizeInBytes() >= sizeBytes && existing.usage === usage) {
 			if (initialData) {
 				this.writeBufferF32(existing.buffer, initialData);
 			}
 
-			return existing;
+			// Create new tensor with updated shape if shape changed
+			const shapeMatch = existing.shape.length === shape.length
+				&& existing.shape.every((v, i) => v === shape[i]);
+
+			if (shapeMatch) {
+				return existing;
+			}
+
+			const updated = new Tensor(existing.buffer, usage, shape);
+			this.tensors.set(name, updated);
+			return updated;
 		}
 
 		const newBuf = this.device.createBuffer({

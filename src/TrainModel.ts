@@ -1,9 +1,13 @@
-import {Model} from "./model/Model";
 import {GPUEnv} from "./GPUEnv";
 import {KernelRegistry} from "./tensor/kernel/KernelRegistry";
 import {TensorManager} from "./tensor/TensorManager";
-import {MNISTDatasource} from "./MNIST/MNISTDatasource";
+import {MNISTDatasource, MNISTDataSourceIterator} from "./MNIST/MNISTDatasource";
 import {MNISTModel} from "./MNIST/MNISTModel";
+import {Sequential} from "./layer/Sequential";
+import {Linear} from "./layer/Linear";
+import {heNormal} from "./math/Utils";
+import {ReLU} from "./layer/ReLU";
+import {Dropout} from "./layer/Dropout";
 
 /**
  * Initialize the GPU. If not present, no training will be possible.
@@ -70,9 +74,48 @@ await datasource
 		throw new Error("Failed to load data source: " + e)
 	});
 
-datasource.showRandomImage(datasource.getRandomTrainImageData());
-datasource.showRandomImage(datasource.getRandomTestImageData());
+function it(iterator: MNISTDataSourceIterator) {
+	const data = iterator.next();
+	for (let i = 0; i < data.size; i++) {
+		MNISTDatasource.ShowRandomImage(data.data.subarray(
+			28 * 28 * i,
+			28 * 28 * (1 + i),
+		));
+		console.log(data.labels[i]);
+	}
+}
+it(datasource.getTrainIterator(4))
+it(datasource.getTestIterator(4))
 
 
-const model = new MNISTModel(GPUEnv.device, tm, 32, 32, 0.001, datasource);
 
+const linear = new Sequential(
+	new Linear(tm, kernelRegistry, {
+		name: "first",
+		inputFeatures: 768,
+		outputFeatures: 256,
+		useBias: true,
+		initializer: heNormal
+	}),
+	new ReLU(tm, kernelRegistry, "ReLU1"),
+	new Dropout(tm, kernelRegistry, "dropout1", 0.5),
+
+	new Linear(tm, kernelRegistry, {
+		name: "second",
+		inputFeatures: 256,
+		outputFeatures: 128,
+		useBias: true,
+		initializer: heNormal
+	}),
+	new ReLU(tm, kernelRegistry, "ReLU2"),
+	new Dropout(tm, kernelRegistry, "dropout2", 0.3),
+
+	new Linear(tm, kernelRegistry, {
+		name: "second",
+		inputFeatures: 128,
+		outputFeatures: 10,
+		useBias: true,
+		initializer: heNormal
+	}),
+
+)

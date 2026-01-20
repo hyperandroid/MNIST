@@ -6,9 +6,6 @@ import {TensorManager} from "../TensorManager";
  * Per sample softmax.
  * Expected to be used with small Tensors (e.g. MNIST N=10)
  *
- * This implementation is based on the following paper:
- * https://arxiv.org/pdf/1609.04747.pdf
- *
  * This implementation is not optimized for large tensors.
  */
 export class SoftmaxKernel extends Kernel {
