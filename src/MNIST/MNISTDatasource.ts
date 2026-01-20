@@ -64,8 +64,12 @@ export class MNISTDataSourceIterator {
 		}
 
 		return {
-			data: this.workingImageBuffer,
-			labels: this.workingLabelBuffer,
+			data: bs < this.batchSize ?
+				this.workingImageBuffer.subarray(0, bs * this.oneImageSize) :
+				this.workingImageBuffer,
+			labels: bs < this.batchSize ?
+				this.workingLabelBuffer.subarray(0, bs) :
+				this.workingLabelBuffer,
 			size: bs,
 		};
 	}
@@ -141,11 +145,17 @@ export class MNISTDatasource implements Datasource {
 	}
 
 	getTrainIterator(batchSize: number): MNISTDataSourceIterator {
-		return this.getIterator(batchSize, this.trainData!, this.trainLabelsData!);
+		if (!this.trainData || !this.trainLabelsData) {
+			throw new Error("MNISTDatasource: train data not loaded. Call load() first.");
+		}
+		return this.getIterator(batchSize, this.trainData, this.trainLabelsData);
 	}
 
 	getTestIterator(batchSize: number): MNISTDataSourceIterator {
-		return this.getIterator(batchSize, this.testData!, this.testLabelsData!);
+		if (!this.testData || !this.testLabelsData) {
+			throw new Error("MNISTDatasource: test data not loaded. Call load() first.");
+		}
+		return this.getIterator(batchSize, this.testData, this.testLabelsData);
 	}
 
 	async load() {
@@ -172,7 +182,10 @@ export class MNISTDatasource implements Datasource {
 		canvas.width = 28 * 10;
 		canvas.height = 28 * 10;
 		document.body.appendChild(canvas);
-		const ctx = canvas.getContext("2d")!;
+		const ctx = canvas.getContext("2d");
+		if (!ctx) {
+			throw new Error("MNISTDatasource: failed to get 2d canvas context");
+		}
 		for (let r = 0; r < 28; r++) {
 			for (let c = 0; c < 28; c++) {
 				const index = r * 28 + c;

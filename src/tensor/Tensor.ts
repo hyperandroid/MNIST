@@ -17,20 +17,18 @@ export class Tensor {
 	 * @param buffer
 	 * @param usage
 	 * @param shape optional shape of the tensor data.
+	 * @param requiresGradient
 	 */
 	constructor(
 		readonly buffer: GPUBuffer,
 		readonly usage: GPUBufferUsageFlags,
-		readonly shape: number[]
+		readonly shape: number[],
+		readonly requiresGradient: boolean = false,
 	) {
 		this.size = shape.reduce((a, b) => a * b, 1);
 	}
 
 	sizeInBytes() {
 		return this.size * 4;
-	}
-
-	hasGradient() {
-		return this.gradient !== undefined;
 	}
 }

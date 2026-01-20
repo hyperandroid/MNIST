@@ -19,9 +19,7 @@ export class Dropout implements Layer {
 	readonly p: number;
 	readonly scale: number;
 
-	private mask?: Tensor;
 	private maskData?: Float32Array;
-	private out?: Tensor;
 
 	constructor(
 		readonly tm: TensorManager,
@@ -58,7 +56,7 @@ export class Dropout implements Layer {
 		}
 
 		// Upload mask to GPU
-		this.mask = this.tm.getTensorBuffer(
+		const mask = this.tm.getTensorBuffer(
 			`${this.name}_mask`,
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
 			[M, N],
@@ -66,15 +64,15 @@ export class Dropout implements Layer {
 		);
 
 		// Ensure output buffer exists
-		if (this.out === undefined) {
-			this.out = this.tm.getTensorBuffer(
-				`${this.name}_out`,
-				GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
-				[M, N],
-			);
-		}
 
-		return this.kr.dropout.run(input, this.mask, this.out);
+		const out = this.tm.getTensorBuffer(
+			`${this.name}_out`,
+			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+			[M, N],
+		);
+
+
+		return this.kr.dropout.run(input, mask, out);
 	}
 
 	backward(input: Tensor): void {

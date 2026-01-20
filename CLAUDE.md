@@ -18,8 +18,15 @@ src/
 │   ├── Model.ts                 # Model interface
 │   └── Datasource.ts            # Datasource interface
 ├── MNIST/
-│   ├── MNISTModel.ts            # MNIST model implementation
 │   └── MNISTDatasource.ts       # MNIST data loading
+├── layer/
+│   ├── Layer.ts                 # Base layer interface
+│   ├── Linear.ts                # Fully connected layer
+│   ├── Sequential.ts            # Layer container
+│   ├── ReLU.ts                  # ReLU activation layer
+│   └── Dropout.ts               # Dropout regularization layer
+├── math/
+│   └── Utils.ts                 # Weight initializers (heNormal, heUniform)
 └── tensor/
     ├── Tensor.ts                # GPU-backed tensor
     ├── TensorManager.ts         # Buffer lifecycle management
@@ -27,7 +34,10 @@ src/
         ├── Kernel.ts            # Base kernel class
         ├── KernelRegistry.ts    # Kernel instantiation
         ├── MatMulKernel.ts
+        ├── MatAddKernel.ts
+        ├── BiasAddKernel.ts
         ├── RELUKernel.ts
+        ├── DropoutKernel.ts
         ├── SoftmaxKernel.ts
         └── CrossEntropyKernel.ts
 ```
@@ -67,7 +77,10 @@ Each kernel:
 ### Available Kernels
 
 - **MatMulKernel**: Tiled 16×16 matrix multiplication with shared memory
+- **MatAddKernel**: Element-wise addition of two 2D tensors with matching shapes
+- **BiasAddKernel**: Broadcasts 1D bias [N] across rows of 2D input [M,N]
 - **RELUKernel**: Element-wise ReLU activation
+- **DropoutKernel**: Element-wise multiplication with pre-computed mask
 - **SoftmaxKernel**: Per-row softmax with numerical stability (optimized for small N like MNIST's 10 classes)
 - **CrossEntropyKernel**: Per-sample cross-entropy loss. Takes predictions [M,N] and one-hot labels [M,N], outputs loss [M,1]
 
@@ -83,3 +96,41 @@ MatMul uses tiled algorithm with workgroup-local shared memory and barrier synch
 2. Define WGSL shader as static string
 3. Add shape validation, params buffer, bind group creation
 4. Register in `KernelRegistry`
+
+### Layer System
+
+All layers implement the `Layer` interface (`src/layer/Layer.ts`):
+```typescript
+interface Layer {
+    forward(input: Tensor): Tensor;
+    backward(input: Tensor): void;
+    parameters(): Tensor[];
+}
+```
+
+**Available Layers:**
+
+- **Linear**: Fully connected layer `output = input * W + b`
+  - Weight layout: `[inputFeatures, outputFeatures]` (row-major)
+  - Input: `[batch, inputFeatures]`, Output: `[batch, outputFeatures]`
+
+- **ReLU**: ReLU activation as a layer wrapper
+
+- **Dropout**: Regularization layer with inverted dropout scaling
+  - Mask generated on CPU, applied on GPU
+
+- **Sequential**: Container for stacking layers
+  ```typescript
+  const model = new Sequential(
+      new Linear(tm, kr, {...}),
+      new ReLU(tm, kr, "relu"),
+      new Dropout(tm, kr, "dropout", 0.5),
+  );
+  const out = model.forward(input);
+  ```
+
+### Weight Initialization
+
+`src/math/Utils.ts` provides:
+- **heNormal**: He normal initialization `N(0, sqrt(2/fanIn))`
+- **heUniform**: He uniform initialization `U(-limit, limit)` where `limit = sqrt(6/fanIn)`

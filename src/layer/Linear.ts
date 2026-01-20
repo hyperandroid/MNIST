@@ -27,9 +27,6 @@ export class Linear implements Layer {
 	readonly weights: Tensor;
 	readonly bias?: Tensor;
 
-	private matmulout?: Tensor;
-	private sumout?: Tensor;
-
 	constructor(
 		readonly tm: TensorManager,
 		readonly kr: KernelRegistry,
@@ -61,28 +58,24 @@ export class Linear implements Layer {
 
 	forward(input: Tensor, isTraining: boolean): Tensor {
 
-		if (this.matmulout === undefined) {
-			this.matmulout = this.tm.getTensorBuffer(
-				`${this.name}_mmout`,
-				GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
-				[input.shape[0], this.weights.shape[1]],
-			)
-		}
+		const matmulout = this.tm.getTensorBuffer(
+			`${this.name}_mmout`,
+			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+			[input.shape[0], this.weights.shape[1]],
+		)
 
-		const mm = this.kr.matmul.run(input, this.weights, this.matmulout);
+		const mm = this.kr.matmul.run(input, this.weights, matmulout);
 		if (!this.bias) {
 			return mm;
 		}
 
-		if (this.sumout === undefined) {
-			this.sumout = this.tm.getTensorBuffer(
-				`${this.name}_sumout`,
-				GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
-				[input.shape[0], this.weights.shape[1]],
-			)
-		}
+		const sumout = this.tm.getTensorBuffer(
+			`${this.name}_sumout`,
+			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+			[input.shape[0], this.weights.shape[1]],
+		)
 
-		return this.kr.biasadd.run(this.matmulout, this.bias, this.sumout);
+		return this.kr.biasadd.run(matmulout, this.bias, sumout);
 	}
 
 	parameters(): Tensor[] {

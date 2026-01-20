@@ -2,7 +2,6 @@ import {GPUEnv} from "./GPUEnv";
 import {KernelRegistry} from "./tensor/kernel/KernelRegistry";
 import {TensorManager} from "./tensor/TensorManager";
 import {MNISTDatasource, MNISTDataSourceIterator} from "./MNIST/MNISTDatasource";
-import {MNISTModel} from "./MNIST/MNISTModel";
 import {Sequential} from "./layer/Sequential";
 import {Linear} from "./layer/Linear";
 import {heNormal} from "./math/Utils";
@@ -111,7 +110,7 @@ const linear = new Sequential(
 	new Dropout(tm, kernelRegistry, "dropout2", 0.3),
 
 	new Linear(tm, kernelRegistry, {
-		name: "second",
+		name: "third",
 		inputFeatures: 128,
 		outputFeatures: 10,
 		useBias: true,
