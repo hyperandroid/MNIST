@@ -44,8 +44,7 @@ export class SumReduceKernel extends Kernel {
 		this.params[1] = N;
 		this.device.queue.writeBuffer(this.paramsBuf, 0, this.params);
 
-		out = out ?? this.tm.getTensorBuffer(
-			`${input.name}_sumreduce`,
+		out = out ?? this.tm.getScopedTensor(
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			[1, N],
 		);

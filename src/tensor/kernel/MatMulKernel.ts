@@ -43,8 +43,7 @@ export class MatMulKernel extends Kernel {
 		const K = t0.shape[1];
 		const N = t1.shape[1];
 
-		out = out ?? this.tm.getTensorBuffer(
-			`${t0.name}_${t1.name}_out`,
+		out = out ?? this.tm.getScopedTensor(
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			[M, N]);
 

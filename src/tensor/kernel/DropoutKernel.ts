@@ -54,8 +54,7 @@ export class DropoutKernel extends Kernel {
 		this.params[1] = N;
 		this.device.queue.writeBuffer(this.paramsBuf, 0, this.params);
 
-		out = out ?? this.tm.getTensorBuffer(
-			`${input.name}_${mask.name}_out`,
+		out = out ?? this.tm.getScopedTensor(
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			[M, N],
 		);

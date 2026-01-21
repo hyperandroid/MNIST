@@ -50,8 +50,7 @@ export class ElementwiseMulKernel extends Kernel {
 		this.params[1] = N;
 		this.device.queue.writeBuffer(this.paramsBuf, 0, this.params);
 
-		out = out ?? this.tm.getTensorBuffer(
-			`${a.name}_${b.name}_mul`,
+		out = out ?? this.tm.getScopedTensor(
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			[M, N],
 		);

@@ -5,12 +5,14 @@ import {SoftmaxCrossEntropyBackward} from "../../autograd/backward/SoftmaxCrossE
 import {KernelRegistry} from "./KernelRegistry";
 
 /**
- * Cross Entropy Loss kernel.
- * Computes: -sum(labels * log(predictions + epsilon)) per row.
+ * Cross Entropy Loss kernel (with built-in log-softmax).
+ * Computes: -sum(labels * log_softmax(logits)) per row.
  *
- * Input predictions should be softmax output [M, N].
- * Input labels should be one-hot encoded [M, N].
- * Output is per-sample loss [M, 1].
+ * Input logits: raw logits [M, N] (NOT softmax output).
+ * Input labels: one-hot encoded [M, N].
+ * Output: per-sample loss [M, 1].
+ *
+ * Uses logsumexp for numerical stability.
  */
 export class CrossEntropyKernel extends Kernel {
 
@@ -52,8 +54,7 @@ export class CrossEntropyKernel extends Kernel {
 		this.params[1] = N;
 		this.device.queue.writeBuffer(this.paramsBuf, 0, this.params);
 
-		out = out ?? this.tm.getTensorBuffer(
-			`${predictions.name}_${labels.name}_out`,
+		out = out ?? this.tm.getScopedTensor(
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			[M, 1],
 		);
@@ -90,39 +91,48 @@ export class CrossEntropyKernel extends Kernel {
 	}
 
 	static xentropyWGSL = `
-		// Cross Entropy Loss: L = -sum(y_true * log(y_pred + epsilon))
-		// One thread per row (sample).
-
 		struct Params {
-		  M : u32,
-		  N : u32,
-		};
+  M : u32,
+  N : u32,
+};
 
-		@group(0) @binding(0) var<storage, read> predictions : array<f32>;
-		@group(0) @binding(1) var<storage, read> labels : array<f32>;
-		@group(0) @binding(2) var<storage, read_write> loss : array<f32>;
-		@group(0) @binding(3) var<uniform> params : Params;
+@group(0) @binding(0) var<storage, read> logits : array<f32>;
+@group(0) @binding(1) var<storage, read> labels : array<f32>; // one-hot
+@group(0) @binding(2) var<storage, read_write> loss : array<f32>;
+@group(0) @binding(3) var<uniform> params : Params;
 
-		const EPSILON : f32 = 1e-7;
+@compute @workgroup_size(256, 1, 1)
+fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
+  let row = gid.x;
+  if (row >= params.M) { return; }
 
-		@compute @workgroup_size(256, 1, 1)
-		fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
-			let row = gid.x;
-			if (row >= params.M) {
-				return;
-			}
+  let N = params.N;
+  let base = row * N;
 
-			let N = params.N;
-			let base = row * N;
+  // 1) max logit for stability
+  var m = logits[base];
+  for (var i = 1u; i < N; i = i + 1u) {
+    let z = logits[base + i];
+    if (z > m) { m = z; }
+  }
 
-			var sum = 0.0;
-			for (var i = 0u; i < N; i = i + 1u) {
-				let pred = predictions[base + i];
-				let label = labels[base + i];
-				sum = sum + label * log(pred + EPSILON);
-			}
+  // 2) logsumexp
+  var sumExp = 0.0;
+  for (var i = 0u; i < N; i = i + 1u) {
+    sumExp = sumExp + exp(logits[base + i] - m);
+  }
+  let logSumExp = log(sumExp) + m;
 
-			loss[row] = -sum;
-		}
+  // 3) cross entropy: -sum y_i * (z_i - logsumexp)
+  var ce = 0.0;
+  for (var i = 0u; i < N; i = i + 1u) {
+    let y = labels[base + i];
+    let z = logits[base + i];
+    ce = ce + y * (logSumExp - z);
+  }
+
+  loss[row] = ce;
+}
+
 	`;
 }

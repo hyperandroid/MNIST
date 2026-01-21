@@ -22,12 +22,13 @@ export class MNISTDataSourceIterator {
 		private oneImageSize: number,
 		private labelsData: Float32Array,
 		private oneLabelSize: number,
+		private maxSize: number,
 	) {
 		this.workingImageBuffer = new Float32Array(oneImageSize * this.batchSize);
 		this.workingLabelBuffer = new Float32Array(oneLabelSize * this.batchSize);
 
-		const trainImageElemets = this.imageData.length / oneImageSize;
-		const trainLabelElemets = this.labelsData.length / oneLabelSize;
+		const trainImageElemets = Math.min(this.maxSize, this.imageData.length / oneImageSize);
+		const trainLabelElemets = Math.min(this.maxSize, this.labelsData.length / oneLabelSize);
 
 		if (trainImageElemets !== trainLabelElemets) {
 			throw new Error("MNIST data source: image and label data have different sizes");
@@ -130,6 +131,9 @@ export class MNISTDatasource implements Datasource {
 
 	trainImagesCount = 60000;
 
+	maxTrainSize = Infinity;
+	maxTestSize = Infinity;
+
 	constructor() {
 	}
 
@@ -145,13 +149,15 @@ export class MNISTDatasource implements Datasource {
 		batchSize: number,
 		data: Float32Array,
 		labels: Float32Array,
+		maxSize: number,
 	): MNISTDataSourceIterator {
 		return new MNISTDataSourceIterator(
 			batchSize,
 			data,
 			28 * 28,
 			labels,
-			10
+			10,
+			maxSize,
 		);
 	}
 
@@ -159,14 +165,14 @@ export class MNISTDatasource implements Datasource {
 		if (!this.trainData || !this.trainLabelsData) {
 			throw new Error("MNISTDatasource: train data not loaded. Call load() first.");
 		}
-		return this.getIterator(batchSize, this.trainData, this.trainLabelsData);
+		return this.getIterator(batchSize, this.trainData, this.trainLabelsData, this.maxTrainSize);
 	}
 
 	getTestIterator(batchSize: number): MNISTDataSourceIterator {
 		if (!this.testData || !this.testLabelsData) {
 			throw new Error("MNISTDatasource: test data not loaded. Call load() first.");
 		}
-		return this.getIterator(batchSize, this.testData, this.testLabelsData);
+		return this.getIterator(batchSize, this.testData, this.testLabelsData, this.maxTestSize);
 	}
 
 	private onehot(uint: Uint8Array): Float32Array {

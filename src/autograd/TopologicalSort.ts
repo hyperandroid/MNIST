@@ -7,6 +7,8 @@ export function topologicalSort(
 	kr: KernelRegistry,
 	loss: Tensor
 ): void {
+	// Begin backward scope for transient tensor allocation
+	tm.beginScope("bwd");
 
 	const visited = new Set<Tensor>();
 	const order: Tensor[] = [];
@@ -27,7 +29,7 @@ export function topologicalSort(
 
 	sort(loss);
 
-	loss.gradient = tm.ones(loss.shape, `${loss.name}_gradient`);
+	loss.gradient = tm.scopedOnes(loss.shape);
 
 	// order has topological order of parameters.
 	for (let i = order.length - 1; i >= 0; i--) {
@@ -44,11 +46,17 @@ export function topologicalSort(
 				continue;
 			}
 
-			if (parent.gradient !== undefined) {
-				parent.gradient = kr.matadd.run(parent.gradient, inputGrads[j], );
-			} else {
-				parent.gradient = inputGrads[j];
+			if (parent.gradient === undefined) {
+				// First gradient - initialize the buffer
+				parent.gradient =  tm.getTensorBuffer(
+						`${parent.name}_grad`,
+						GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+						inputGrads[j].shape,
+						new Float32Array(inputGrads[j].size).fill(0)
+					);
 			}
+
+			kr.inplaceAdd.run(parent.gradient, inputGrads[j]);
 		}
 	}
 }

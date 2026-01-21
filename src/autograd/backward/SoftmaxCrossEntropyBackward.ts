@@ -11,7 +11,7 @@ import {KernelRegistry} from "../../tensor/kernel/KernelRegistry";
  *   dL/dLogits = Softmax(logits) - labels
  *
  * This is numerically more stable than computing them separately.
- * savedTensors: [softmaxOutput, labels]
+ * savedTensors: [logits, labels]
  */
 export class SoftmaxCrossEntropyBackward implements GradientFunction {
 	readonly name = "SoftmaxCrossEntropyBackward";
@@ -22,21 +22,11 @@ export class SoftmaxCrossEntropyBackward implements GradientFunction {
 	) {}
 
 	backward(gradOutput: Tensor): Tensor[] {
-		const [softmaxOutput, labels] = this.savedTensors;
+		const [logits, labels] = this.savedTensors;
 
-		// dLogits = softmax - labels
-		// We need to negate labels and add to softmax
-		// Using matadd with negated labels: softmax + (-labels)
-		// But we don't have a negate kernel, so we'll use matadd
-		// and handle the sign in a custom way.
-
-		// For now, create gradient as softmax - labels using the
-		// SubtractKernel if available, or compute inline.
-		// Since we only have matadd, we'll need to compute -labels first.
-
-		// Actually, let's use the softmaxCrossEntropyBackward kernel directly
-		// which computes softmax - labels in one pass.
-		const gradLogits = this.kr.softmaxCEBackward.run(softmaxOutput, labels);
+		// dLogits = softmax(logits) - labels
+		// The kernel computes softmax internally for numerical stability
+		const gradLogits = this.kr.softmaxCEBackward.run(logits, labels);
 
 		return [gradLogits];
 	}

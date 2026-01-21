@@ -50,8 +50,7 @@ export class ScalarMulKernel extends Kernel {
 
 		this.device.queue.writeBuffer(this.paramsBuf, 0, this.params);
 
-		out = out ?? this.tm.getTensorBuffer(
-			`${input.name}_scaled`,
+		out = out ?? this.tm.getScopedTensor(
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			[M, N],
 		);

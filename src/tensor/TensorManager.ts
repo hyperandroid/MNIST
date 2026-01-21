@@ -20,9 +20,36 @@ export class TensorManager {
 
 	private pendingDestroy: GPUBuffer[] = [];
 
+	// Scoped allocation for transient tensors
+	private scopeName = "";
+	private scopeCounter = 0;
+
 	constructor(
 		readonly device: GPUDevice
 	) {
+	}
+
+	/**
+	 * Begin a named scope for transient tensor allocation.
+	 * Resets the counter so tensors get reusable names like "_fwd_0", "_fwd_1", etc.
+	 */
+	beginScope(name: string) {
+		this.scopeName = name;
+		this.scopeCounter = 0;
+	}
+
+	/**
+	 * Get a transient tensor within the current scope.
+	 * Uses sequential naming (_scope_0, _scope_1, ...) that resets each scope,
+	 * enabling buffer reuse across iterations.
+	 */
+	getScopedTensor(
+		usage: GPUBufferUsageFlags,
+		shape: number[],
+		initialData?: Float32Array,
+	): Tensor {
+		const name = `_${this.scopeName}_${this.scopeCounter++}`;
+		return this.getTensorBuffer(name, usage, shape, initialData);
 	}
 
 	getTensorBuffer(
@@ -134,8 +161,30 @@ export class TensorManager {
 		return buf;
 	}
 
+	/**
+	 * Create a scoped tensor filled with ones.
+	 */
+	scopedOnes(shape: number[]) {
+		const buf = this.getScopedTensor(
+			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+			shape);
+		this.writeBufferF32(buf.buffer, new Float32Array(shape.reduce((a, b) => a * b, 1)).fill(1));
+		return buf;
+	}
+
+	/**
+	 * Create a scoped tensor filled with zeros.
+	 */
+	scopedZeros(shape: number[]) {
+		const buf = this.getScopedTensor(
+			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+			shape);
+		this.writeBufferF32(buf.buffer, new Float32Array(shape.reduce((a, b) => a * b, 1)).fill(0));
+		return buf;
+	}
+
 	zeros(buf: Tensor) {
-		this.writeBufferF32(buf.buffer, new Float32Array(buf.size).fill(1));
+		this.writeBufferF32(buf.buffer, new Float32Array(buf.size).fill(0));
 	}
 
 	async flushDestroyQueue() {

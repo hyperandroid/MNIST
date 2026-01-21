@@ -14,6 +14,7 @@ import {SoftmaxBackwardKernel} from "./SoftmaxBackwardKernel";
 import {ScalarMulKernel} from "./ScalarMulKernel";
 import {InplaceAddKernel} from "./InplaceAddKernel";
 import {SumAllKernel} from "./SumAllKernel";
+import {ClipGradNormKernel} from "./ClipGradNormKernel";
 import {TensorManager} from "../TensorManager";
 
 export class KernelRegistry {
@@ -38,6 +39,7 @@ export class KernelRegistry {
 	readonly scalarMul: ScalarMulKernel;
 	readonly inplaceAdd: InplaceAddKernel;
 	readonly sumAll: SumAllKernel;
+	readonly clipGradNorm: ClipGradNormKernel;
 
 	constructor(device: GPUDevice, tm: TensorManager) {
 		this.matmul = new MatMulKernel(device, tm, this);
@@ -60,6 +62,7 @@ export class KernelRegistry {
 		this.scalarMul = new ScalarMulKernel(device, tm, this);
 		this.inplaceAdd = new InplaceAddKernel(device, tm, this);
 		this.sumAll = new SumAllKernel(device, tm, this);
+		this.clipGradNorm = new ClipGradNormKernel(device, tm, this);
 	}
 
 }
