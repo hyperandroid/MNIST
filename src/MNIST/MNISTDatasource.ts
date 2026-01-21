@@ -38,6 +38,14 @@ export class MNISTDataSourceIterator {
 		this.restart();
 	}
 
+	getCurrentIndex() {
+		return this.currentIndex;
+	}
+
+	getSize() {
+		return this.iteratorSize;
+	}
+
     hasNext(): boolean {
 		return this.currentIndex < this.iteratorSize;
 	}

@@ -60,6 +60,71 @@ await datasource
 		throw new Error("Failed to load data source: " + e)
 	});
 
+
+let currentEpoch = 0;
+let iterator: MNISTDataSourceIterator = datasource.getTrainIterator(batchSize);
+
+async function oneRun(epoch: number, iterator: MNISTDataSourceIterator) {
+	if (iterator.hasNext()) {
+		// 1. Zero gradients
+		optimizer.zeroGrad();
+
+		// 2. Prepare data
+		const data = iterator.next();
+
+		const input = tm.getTensorBuffer(
+			"input",
+			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+			[batchSize, 28 * 28],
+			data.data,
+		);
+
+		const labelsOneHot = tm.getTensorBuffer(
+			"labels_onehot",
+			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+			[batchSize, 10],
+			data.labels
+		);
+
+		// 3. Forward
+		const logits = model.forward(input, true);
+		const probs = kernelRegistry.softmax.run(logits);
+		const loss = kernelRegistry.crossEntropy.run(probs, labelsOneHot);
+
+		// 4. Backward
+		topologicalSort(tm, kernelRegistry, loss);
+
+		// 5. Optimize, SGD
+		optimizer.step();
+
+		await GPUEnv.device.queue.onSubmittedWorkDone();
+	} else {
+		iterator = datasource.getTrainIterator(batchSize);
+		currentEpoch++;
+		onUpdateData(currentEpoch, epochs, iterator.getCurrentIndex(), iterator.getSize());
+	}
+
+	if (currentEpoch < epochs) {
+		onUpdateData(currentEpoch, epochs, iterator.getCurrentIndex(), iterator.getSize());
+		requestAnimationFrame(() => oneRun(currentEpoch, iterator));
+	}
+}
+
+setTimeout(() => {
+
+	requestAnimationFrame(() => oneRun(currentEpoch, iterator));
+}, 5000);
+
+function onUpdateData(epoch: number, epochs: number, current: number, total: number) {
+	const node = document.getElementById("out");
+	const out  = `Epoch ${epoch}/${epochs} (${current}/${total})`;
+	if (node !== null) {
+		node.innerHTML = out;
+	}
+	console.log(out);
+}
+
+/*
 for (let epoch = 0; epoch < epochs; epoch++) {
 	const iterator = datasource.getTrainIterator(batchSize);
 
@@ -96,3 +161,4 @@ for (let epoch = 0; epoch < epochs; epoch++) {
 		await GPUEnv.device.queue.onSubmittedWorkDone();
 	}
 }
+*/
