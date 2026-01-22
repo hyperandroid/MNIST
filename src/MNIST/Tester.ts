@@ -1,7 +1,7 @@
-import {MNISTDatasource, MNISTDataSourceIterator, MNISTDataSourceIteratorValue} from "./MNIST/MNISTDatasource";
-import {TensorManager} from "./tensor/TensorManager";
-import {KernelRegistry} from "./tensor/kernel/KernelRegistry";
-import {MNIST} from "./MNIST/MNIST";
+import {MNISTDatasource, MNISTDataSourceIterator, MNISTDataSourceIteratorValue} from "./MNISTDatasource";
+import {TensorManager} from "../tensor/TensorManager";
+import {KernelRegistry} from "../tensor/kernel/KernelRegistry";
+import {MNIST} from "./MNIST";
 
 export type TesterState = "idle"
 	| "testing"

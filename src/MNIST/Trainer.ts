@@ -1,11 +1,11 @@
-import {MNISTDatasource, MNISTDataSourceIterator, MNISTDataSourceIteratorValue} from "./MNIST/MNISTDatasource";
-import {SGD} from "./optimizer/SGD";
-import {Optimizer} from "./optimizer/Optimizer";
-import {TensorManager} from "./tensor/TensorManager";
-import {KernelRegistry} from "./tensor/kernel/KernelRegistry";
-import {GPUEnv} from "./GPUEnv";
-import {computeBackwardPass} from "./autograd/BackwardPass";
-import {MNIST} from "./MNIST/MNIST";
+import {MNISTDatasource, MNISTDataSourceIterator, MNISTDataSourceIteratorValue} from "./MNISTDatasource";
+import {SGD} from "../optimizer/SGD";
+import {Optimizer} from "../optimizer/Optimizer";
+import {TensorManager} from "../tensor/TensorManager";
+import {KernelRegistry} from "../tensor/kernel/KernelRegistry";
+import {GPUEnv} from "../GPUEnv";
+import {computeBackwardPass} from "../autograd/BackwardPass";
+import {MNIST} from "./MNIST";
 
 export type TrainerState = "idle"
 	| "training"

@@ -3,16 +3,17 @@ import {KernelRegistry} from "./tensor/kernel/KernelRegistry";
 import {TensorManager} from "./tensor/TensorManager";
 import {MNISTDatasource} from "./MNIST/MNISTDatasource";
 import {MNIST} from "./MNIST/MNIST";
-import {Trainer} from "./Trainer";
-import {Tester} from "./Tester";
+import {Trainer} from "./MNIST/Trainer";
+import {Tester} from "./MNIST/Tester";
 
 await GPUEnv.init()
 
 const tm = new TensorManager(GPUEnv.device);
 const kernelRegistry = new KernelRegistry(GPUEnv.device, tm);
 
-// create model, and read trained data
+// createa  model,
 const mnist = new MNIST(tm, kernelRegistry);
+// load pre-trained model. 97.35% accuracy on the test set.
 await mnist.readSnapshot();
 
 // create train/test datasource
@@ -39,13 +40,11 @@ async function train() {
 			if (node !== null) {
 				node.innerHTML = out;
 			}
-		}
+		},
 	);
 	await trainer.initialize();
-	trainer.saveSnapshot = true;
 	trainer.startTraining();
 }
-
 
 const tester = new Tester(
 	tm,
@@ -71,6 +70,4 @@ const tester = new Tester(
 );
 
 await tester.initialize();
-
-
 await train();

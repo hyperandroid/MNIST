@@ -4,11 +4,11 @@ import {TensorManager} from "../tensor/TensorManager";
 import {KernelRegistry} from "../tensor/kernel/KernelRegistry";
 import {heUniform} from "../math/Utils";
 import {ReLU} from "../layer/ReLU";
+import {MNISTDatasource} from "./MNISTDatasource";
 
 export class MNIST {
 
 	readonly model: Sequential;
-	// Direct references to Linear layers (avoids fragile index-based access)
 	readonly firstLayer: Linear;
 	readonly secondLayer: Linear;
 
@@ -19,7 +19,7 @@ export class MNIST {
 	) {
 		this.firstLayer = new Linear(tm, kernelRegistry, {
 			name: "first",
-			inputFeatures: 28 * 28,
+			inputFeatures: MNISTDatasource.imageSize,
 			outputFeatures: 128,
 			useBias: true,
 			initializer
