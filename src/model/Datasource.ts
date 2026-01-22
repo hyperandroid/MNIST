@@ -1,4 +1,4 @@
 
 export interface Datasource {
-	load(): Promise<void>;
+	load(path: string): Promise<void>;
 }

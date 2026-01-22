@@ -2,7 +2,7 @@ import {Tensor} from "../tensor/Tensor";
 import {TensorManager} from "../tensor/TensorManager";
 import {KernelRegistry} from "../tensor/kernel/KernelRegistry";
 
-export function topologicalSort(
+export function computeBackwardPass(
 	tm: TensorManager,
 	kr: KernelRegistry,
 	loss: Tensor

@@ -70,7 +70,7 @@ export class SGD implements Optimizer {
 		}
 	}
 
-	zeroGrad(): void {
+	zeroGrad() {
 		for (const p of this.params) {
 			if (p.gradient) {
 				this.tm.writeBufferF32(

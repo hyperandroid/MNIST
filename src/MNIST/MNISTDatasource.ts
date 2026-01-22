@@ -186,15 +186,15 @@ export class MNISTDatasource implements Datasource {
 		return output;
 	}
 
-	async load() {
-		const trainImagesResponse = await fetch("data/train-images.idx3-ubyte")
+	async load(path: string) {
+		const trainImagesResponse = await fetch(`${path}/train-images.idx3-ubyte`)
 		this.trainData = this.toFloat32(new Uint8Array(await trainImagesResponse.arrayBuffer(), 16));
-		const trainLabelsResponse = await fetch("data/train-labels.idx1-ubyte");
+		const trainLabelsResponse = await fetch(`${path}/train-labels.idx1-ubyte`);
 		this.trainLabelsData = this.onehot(new Uint8Array(await trainLabelsResponse.arrayBuffer(), 8));
 
-		const testDataResponse = await fetch("data/t10k-images.idx3-ubyte");
+		const testDataResponse = await fetch(`${path}/t10k-images.idx3-ubyte`);
 		this.testData = this.toFloat32(new Uint8Array(await testDataResponse.arrayBuffer(), 16));
-		const testLabelsResponse = await fetch("data/t10k-labels.idx1-ubyte");
+		const testLabelsResponse = await fetch(`${path}/t10k-labels.idx1-ubyte`);
 		this.testLabelsData = this.onehot(new Uint8Array(await testLabelsResponse.arrayBuffer(), 8));
 
 		this.testImagesCount = this.testData.length / this.testImageSize;

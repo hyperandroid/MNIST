@@ -2,91 +2,51 @@ import {GPUEnv} from "./GPUEnv";
 import {KernelRegistry} from "./tensor/kernel/KernelRegistry";
 import {TensorManager} from "./tensor/TensorManager";
 import {MNISTDatasource, MNISTDataSourceIterator} from "./MNIST/MNISTDatasource";
-import {Sequential} from "./layer/Sequential";
-import {Linear} from "./layer/Linear";
-import {heNormal, heUniform} from "./math/Utils";
-import {ReLU} from "./layer/ReLU";
 import {SGD} from "./optimizer/SGD";
-import {topologicalSort} from "./autograd/BackwardPass";
+import {computeBackwardPass} from "./autograd/BackwardPass";
+import {MNIST} from "./MNIST/MNIST";
 
-/**
- * Initialize the GPU. If not present, no training will be possible.
- */
 await GPUEnv.init()
 
+const epochs = 15;
+const batchSize = 32;
 const tm = new TensorManager(GPUEnv.device);
 const kernelRegistry = new KernelRegistry(GPUEnv.device, tm);
-
-const model = new Sequential(
-	new Linear(tm, kernelRegistry, {
-		name: "first",
-		inputFeatures: 28*28,
-		outputFeatures: 128,
-		useBias: true,
-		initializer: heUniform
-	}),
-	new ReLU(tm, kernelRegistry, "ReLU1"),
-	new Linear(tm, kernelRegistry, {
-		name: "second",
-		inputFeatures: 128,
-		outputFeatures: 10,
-		useBias: true,
-		initializer: heUniform
-	}),
-
-	/*
-	new Linear(tm, kernelRegistry, {
-		name: "first",
-		inputFeatures: 28*28,
-		outputFeatures: 256,
-		useBias: true,
-		initializer: heNormal
-	}),
-	new ReLU(tm, kernelRegistry, "ReLU1"),
-
-	new Dropout(tm, kernelRegistry, "dropout1", 0.5),
-
-	new Linear(tm, kernelRegistry, {
-		name: "second",
-		inputFeatures: 256,
-		outputFeatures: 128,
-		useBias: true,
-		initializer: heNormal
-	}),
-	new ReLU(tm, kernelRegistry, "ReLU2"),
-	new Dropout(tm, kernelRegistry, "dropout2", 0.3),
-
-	new Linear(tm, kernelRegistry, {
-		name: "third",
-		inputFeatures: 128,
-		outputFeatures: 10,
-		useBias: true,
-		initializer: heNormal
-	}),
-
-	 */
-);
-
-const epochs = 10;
-const batchSize = 16;
-
+const mnist = new MNIST(tm, kernelRegistry);
+await mnist.readSnapshot();
+const model = mnist.model;
 
 const datasource = new MNISTDatasource();
 await datasource
-	.load()
+	.load("data/mnist")
 	.catch((e: Error) => {
 		throw new Error("Failed to load data source: " + e)
 	});
 
-datasource.maxTrainSize = 1000;
-
-const optimizer = new SGD(model.parameters(), 0.001, tm, kernelRegistry, batchSize, 1);
+const optimizer = new SGD(model.parameters(), 0.05, tm, kernelRegistry, batchSize);
 const trainSize = Math.min(datasource.trainImagesCount, datasource.maxTrainSize);
 const stepsPerEpoch = Math.ceil(trainSize / batchSize);
-optimizer.setSchedule({ type: "cosine", minLr: 0.0001, maxSteps: stepsPerEpoch * epochs });
+optimizer.setSchedule({ type: "cosine", minLr: 0.001, maxSteps: stepsPerEpoch * epochs });
 
 let currentEpoch = 0;
 let iterator: MNISTDataSourceIterator = datasource.getTrainIterator(batchSize);
+
+async function snapshot() {
+	for(const parameter of model.parameters()) {
+		const buffer = await tm.readBuffer(parameter.buffer, parameter.sizeInBytes());
+		const blob = new Blob([buffer], {type: "application/octet-stream"});
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `model-${currentEpoch}-${parameter.name}.bin`;
+		a.click();
+		URL.revokeObjectURL(url);
+	}
+}
+
+async function sync() {
+	await GPUEnv.device.queue.onSubmittedWorkDone();
+}
 
 async function train(epoch: number, iterator: MNISTDataSourceIterator) {
 	if (iterator.hasNext()) {
@@ -119,32 +79,32 @@ async function train(epoch: number, iterator: MNISTDataSourceIterator) {
 		const loss = kernelRegistry.crossEntropy.run(logits, labelsOneHot);
 
 		// 4. Backward (scope set inside topologicalSort)
-		topologicalSort(tm, kernelRegistry, loss);
+		computeBackwardPass(tm, kernelRegistry, loss);
 
-		await GPUEnv.device.queue.onSubmittedWorkDone();
+		sync();
 
 		// 5. Optimize, SGD
 		optimizer.step(currentBatchSize);
 
-		const logitsBuffer = await tm.readBuffer(logits.buffer, logits.sizeInBytes());
-		const lossBuffer = await tm.readBuffer(loss.buffer, loss.sizeInBytes());
+		sync();
 
-		await GPUEnv.device.queue.onSubmittedWorkDone();
 	} else {
 		iterator = datasource.getTrainIterator(batchSize);
 		currentEpoch++;
 		onUpdateData(currentEpoch, epochs, iterator.getCurrentIndex(), iterator.getSize());
+		await snapshot();
 	}
 
 	if (currentEpoch < epochs) {
 		onUpdateData(currentEpoch, epochs, iterator.getCurrentIndex(), iterator.getSize());
 		requestAnimationFrame(() => train(currentEpoch, iterator));
 	} else {
+		await snapshot();
 		requestAnimationFrame(() => test())
 	}
 }
 
-requestAnimationFrame(() => train(currentEpoch, iterator));
+//requestAnimationFrame(() => train(currentEpoch, iterator));
 
 function onUpdateData(epoch: number, epochs: number, current: number, total: number) {
 	const node = document.getElementById("out");
@@ -180,10 +140,7 @@ async function test() {
 		const logits = model.forward(input, false);
 		const probs = kernelRegistry.softmax.run(logits);
 
-		// await GPUEnv.device.queue.onSubmittedWorkDone();
-
 		// Read back predictions
-		const logitsData = await tm.readBuffer(logits.buffer, logits.sizeInBytes());
 		const probsData = await tm.readBuffer(probs.buffer, probs.sizeInBytes());
 
 		// Calculate accuracy
@@ -217,12 +174,12 @@ async function test() {
 		onTestUpdate(testCorrect, testTotal, testIterator.getCurrentIndex(), testIterator.getSize());
 		requestAnimationFrame(test);
 	} else {
-
-		const accuracy = (testCorrect / testTotal * 100).toFixed(2);
 		onTestComplete(testCorrect, testTotal);
 		testIterator = null;
 	}
 }
+
+requestAnimationFrame(() => test());
 
 function onTestUpdate(correct: number, total: number, current: number, size: number) {
 	const node = document.getElementById("outtest");
