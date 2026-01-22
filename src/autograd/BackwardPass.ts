@@ -29,6 +29,10 @@ export function topologicalSort(
 
 	sort(loss);
 
+	for (const t of order) {
+		t.gradient = undefined;
+	}
+
 	loss.gradient = tm.scopedOnes(loss.shape);
 
 	// order has topological order of parameters.

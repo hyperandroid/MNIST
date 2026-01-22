@@ -81,7 +81,9 @@ await datasource
 datasource.maxTrainSize = 1000;
 
 const optimizer = new SGD(model.parameters(), 0.001, tm, kernelRegistry, batchSize, 1);
-optimizer.setSchedule({ type: "cosine", minLr: 0.005, maxSteps: datasource.testImagesCount });
+const trainSize = Math.min(datasource.trainImagesCount, datasource.maxTrainSize);
+const stepsPerEpoch = Math.ceil(trainSize / batchSize);
+optimizer.setSchedule({ type: "cosine", minLr: 0.0001, maxSteps: stepsPerEpoch * epochs });
 
 let currentEpoch = 0;
 let iterator: MNISTDataSourceIterator = datasource.getTrainIterator(batchSize);
@@ -95,18 +97,19 @@ async function train(epoch: number, iterator: MNISTDataSourceIterator) {
 
 		// 2. Prepare data
 		const data = iterator.next();
+		const currentBatchSize = data.size;
 
 		const input = tm.getTensorBuffer(
 			"input",
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
-			[batchSize, 28 * 28],
+			[currentBatchSize, 28 * 28],
 			data.data,
 		);
 
 		const labelsOneHot = tm.getTensorBuffer(
 			"labels_onehot",
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
-			[batchSize, 10],
+			[currentBatchSize, 10],
 			data.labels
 		);
 
@@ -121,7 +124,7 @@ async function train(epoch: number, iterator: MNISTDataSourceIterator) {
 		await GPUEnv.device.queue.onSubmittedWorkDone();
 
 		// 5. Optimize, SGD
-		optimizer.step();
+		optimizer.step(currentBatchSize);
 
 		const logitsBuffer = await tm.readBuffer(logits.buffer, logits.sizeInBytes());
 		const lossBuffer = await tm.readBuffer(loss.buffer, loss.sizeInBytes());

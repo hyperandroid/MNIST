@@ -21,9 +21,11 @@ export class SGD implements Optimizer {
 		this.currentLr = lr;
 	}
 
-	step() {
+	step(batchSizeOverride?: number) {
 		// Update learning rate based on schedule
 		this.updateLearningRate();
+
+		const effectiveBatchSize = batchSizeOverride ?? this.batchSize;
 
 		for (const p of this.params) {
 			if (!p.gradient) continue;
@@ -34,7 +36,7 @@ export class SGD implements Optimizer {
 			}
 
 			// p = p - lr * grad
-			const update = this.kr.scalarMul.run(p.gradient, -this.currentLr / this.batchSize);
+			const update = this.kr.scalarMul.run(p.gradient, -this.currentLr / effectiveBatchSize);
 			this.kr.inplaceAdd.run(p, update);
 		}
 
