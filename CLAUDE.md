@@ -13,11 +13,13 @@ npm run dev    # Start Vite dev server
 ```
 src/
 ├── GPUEnv.ts                           # WebGPU device singleton
-├── TrainModel.ts                       # Entry point
+├── main.ts                             # Entry point
+├── Trainer.ts                          # Training loop orchestrator
+├── Tester.ts                           # Test/evaluation harness
 ├── model/
-│   ├── Model.ts                        # Model interface
 │   └── Datasource.ts                   # Datasource interface
 ├── MNIST/
+│   ├── MNIST.ts                        # MNIST model definition
 │   └── MNISTDatasource.ts              # MNIST data loading
 ├── layer/
 │   ├── Layer.ts                        # Base layer interface
@@ -29,7 +31,7 @@ src/
 │   └── Utils.ts                        # Weight initializers (heNormal, heUniform)
 ├── autograd/
 │   ├── GradientFunction.ts             # Interface for backward functions
-│   ├── TopologicalSort.ts              # Reverse topological sort for backprop
+│   ├── BackwardPass.ts                 # Reverse topological sort for backprop
 │   └── backward/
 │       ├── MatMulBackward.ts
 │       ├── BiasAddBackward.ts
@@ -39,8 +41,8 @@ src/
 │       ├── SoftmaxBackward.ts
 │       └── SoftmaxCrossEntropyBackward.ts
 ├── optimizer/
-│   ├── Optimizer.ts                    # Optimizer interface
-│   └── SGD.ts                          # Stochastic Gradient Descent
+│   ├── Optimizer.ts                    # Optimizer interface with LR scheduling
+│   └── SGD.ts                          # SGD with scheduling and gradient clipping
 └── tensor/
     ├── Tensor.ts                       # GPU-backed tensor with autograd support
     ├── TensorManager.ts                # Buffer lifecycle management
@@ -62,7 +64,8 @@ src/
         ├── SoftmaxCEBackwardKernel.ts  # Autograd support
         ├── ScalarMulKernel.ts          # Optimizer support
         ├── InplaceAddKernel.ts         # Optimizer support
-        └── SumAllKernel.ts             # Optimizer support
+        ├── SumAllKernel.ts             # Optimizer support
+        └── ClipGradNormKernel.ts       # Gradient clipping support
 ```
 
 ## Architecture
@@ -120,6 +123,7 @@ Each kernel:
 - **ScalarMulKernel**: `output = input * scalar` (for learning rate scaling)
 - **InplaceAddKernel**: `target += source` (for parameter updates)
 - **SumAllKernel**: Reduces all elements to scalar [1,1] (for loss reduction)
+- **ClipGradNormKernel**: In-place L2 norm gradient clipping with parallel reduction
 
 ### WebGPU Compute Pattern
 
@@ -193,11 +197,11 @@ interface GradientFunction {
 }
 ```
 
-**Backpropagation** (`src/autograd/TopologicalSort.ts`):
+**Backpropagation** (`src/autograd/BackwardPass.ts`):
 1. Build reverse topological order starting from loss
 2. Initialize loss gradient to ones
 3. Traverse in reverse order, calling `gradFn.backward()` on each node
-4. Accumulate gradients in parent tensors via `matadd`
+4. Accumulate gradients in parent tensors via `inplaceAdd`
 
 **Backward Functions** (`src/autograd/backward/`):
 - **MatMulBackward**: `dA = dC @ Bᵀ`, `dB = Aᵀ @ dC`
@@ -210,38 +214,74 @@ interface GradientFunction {
 
 **Optimizer Interface** (`src/optimizer/Optimizer.ts`):
 ```typescript
+type LRSchedule =
+    | { type: "constant" }
+    | { type: "step"; factor: number; everyNSteps: number }
+    | { type: "exponential"; decayRate: number }
+    | { type: "cosine"; minLr: number; maxSteps: number };
+
 interface Optimizer {
-    step(): void;      // Apply gradients to parameters
-    zeroGrad(): void;  // Reset all gradients to zero
+    step(batchSizeOverride?: number): void;  // Apply gradients to parameters
+    zeroGrad(): void;                        // Reset all gradients to zero
+    getLearningRate(): number;
+    setLearningRate(lr: number): void;
+    setSchedule(schedule: LRSchedule): void;
 }
 ```
 
 **SGD Optimizer** (`src/optimizer/SGD.ts`):
 ```typescript
-const optimizer = new SGD(model.parameters(), learningRate, tm, kr);
+const optimizer = new SGD(model.parameters(), learningRate, tm, kr, batchSize, maxGradNorm);
+optimizer.setSchedule({ type: "cosine", minLr: 0.001, maxSteps: totalSteps });
 optimizer.zeroGrad();  // Before forward pass
 // ... forward, backward ...
-optimizer.step();      // Update: param = param - lr * grad
+optimizer.step(currentBatchSize);  // Update: param = param - lr * grad / batchSize
 ```
+
+Features:
+- Learning rate scheduling (constant, step decay, exponential decay, cosine annealing)
+- Optional gradient clipping by L2 norm via `maxGradNorm` parameter
+- Batch size normalization of gradients
+
+### MNIST Model
+
+**MNIST Class** (`src/MNIST/MNIST.ts`):
+```typescript
+class MNIST {
+    readonly model: Sequential;
+    constructor(tm: TensorManager, kernelRegistry: KernelRegistry, initializer = heUniform);
+    async readSnapshot(): Promise<void>;  // Load pre-trained weights
+    async restart(): Promise<void>;        // Reinitialize weights
+}
+```
+
+The MNIST model is a 2-layer MLP: `784 → 128 (ReLU) → 10`
+
+### Training/Testing Architecture
+
+**Trainer** (`src/Trainer.ts`):
+- Manages training loop with `requestAnimationFrame` for non-blocking UI
+- Supports epoch-based training with configurable batch size
+- Handles LR scheduling via cosine annealing
+- State machine: `idle → training → finished` (with cancellation support)
+
+**Tester** (`src/Tester.ts`):
+- Evaluates model accuracy on test set
+- Non-blocking batch processing via `requestAnimationFrame`
+- Computes accuracy by comparing argmax of predictions vs labels
 
 ### Training Loop Pattern
 
 ```typescript
-for (let epoch = 0; epoch < epochs; epoch++) {
-    const iterator = datasource.getTrainIterator(batchSize);
-    while (iterator.hasNext()) {
-        optimizer.zeroGrad();
+// Using Trainer class
+const trainer = new Trainer(tm, kr, mnist, datasource, onFinished, onUpdate);
+await trainer.initialize();
+trainer.startTraining();
 
-        const batch = iterator.next();
-        const input = tm.getTensorBuffer("input", usage, [batchSize, 784], batch.data);
-        const labels = tm.getTensorBuffer("labels", usage, [batchSize, 10], batch.labels);
-
-        const logits = model.forward(input, true);
-        const probs = kr.softmax.run(logits);
-        const loss = kr.crossEntropy.run(probs, labels);
-
-        topologicalSort(tm, kr, loss);  // Backpropagation
-        optimizer.step();               // Update parameters
-    }
-}
+// Or manual loop
+optimizer.zeroGrad();
+const logits = model.forward(input, true);
+const loss = kr.crossEntropy.run(logits, labelsOneHot);
+computeBackwardPass(tm, kr, loss);  // Backpropagation
+optimizer.step(batchSize);          // Update parameters
 ```

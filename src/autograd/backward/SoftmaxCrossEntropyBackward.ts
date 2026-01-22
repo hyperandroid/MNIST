@@ -26,10 +26,10 @@ export class SoftmaxCrossEntropyBackward implements GradientFunction {
 
 		// dLogits = softmax(logits) - labels
 		// The kernel computes softmax internally for numerical stability
+		// Note: No batch averaging here - the optimizer handles batch normalization
+		// (SGD divides by batch size when applying gradients)
 		const gradLogits = this.kr.softmaxCEBackward.run(logits, labels);
-		const scale = 1 / logits.shape[0];
-		const scaledGradLogits = this.kr.scalarMul.run(gradLogits, scale);
 
-		return [scaledGradLogits];
+		return [gradLogits];
 	}
 }

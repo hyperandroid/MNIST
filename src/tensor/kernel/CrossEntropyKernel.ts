@@ -33,22 +33,22 @@ export class CrossEntropyKernel extends Kernel {
 	}
 
 	run(
-		predictions: Tensor,
+		logits: Tensor,
 		labels: Tensor,
 		out?: Tensor,
 	): Tensor {
-		if (predictions.shape.length !== 2) {
-			throw new Error("CrossEntropy: predictions must be 2D tensor");
+		if (logits.shape.length !== 2) {
+			throw new Error("CrossEntropy: logits must be 2D tensor");
 		}
 		if (labels.shape.length !== 2) {
 			throw new Error("CrossEntropy: labels must be 2D tensor");
 		}
-		if (predictions.shape[0] !== labels.shape[0] || predictions.shape[1] !== labels.shape[1]) {
-			throw new Error("CrossEntropy: predictions and labels must have same shape");
+		if (logits.shape[0] !== labels.shape[0] || logits.shape[1] !== labels.shape[1]) {
+			throw new Error("CrossEntropy: logits and labels must have same shape");
 		}
 
-		const M = predictions.shape[0];
-		const N = predictions.shape[1];
+		const M = logits.shape[0];
+		const N = logits.shape[1];
 
 		this.params[0] = M;
 		this.params[1] = N;
@@ -62,7 +62,7 @@ export class CrossEntropyKernel extends Kernel {
 		const bindGroup = this.device.createBindGroup({
 			layout: this.pipeline.getBindGroupLayout(0),
 			entries: [
-				{binding: 0, resource: {buffer: predictions.buffer}},
+				{binding: 0, resource: {buffer: logits.buffer}},
 				{binding: 1, resource: {buffer: labels.buffer}},
 				{binding: 2, resource: {buffer: out.buffer}},
 				{binding: 3, resource: {buffer: this.paramsBuf}},
@@ -80,11 +80,11 @@ export class CrossEntropyKernel extends Kernel {
 
 		// Autograd: track computation graph
 		// Use combined SoftmaxCrossEntropy backward for numerical stability
-		// (assumes predictions came from softmax)
-		if (predictions.requiresGradient) {
+		// Forward computes log-softmax internally; backward computes softmax(logits) - labels
+		if (logits.requiresGradient) {
 			out.requiresGradient = true;
-			out.parents = [predictions];
-			out.gradFn = new SoftmaxCrossEntropyBackward([predictions, labels], this.kr!);
+			out.parents = [logits];
+			out.gradFn = new SoftmaxCrossEntropyBackward([logits, labels], this.kr!);
 		}
 
 		return out;

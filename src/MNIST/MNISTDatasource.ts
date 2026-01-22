@@ -126,7 +126,7 @@ export class MNISTDatasource implements Datasource {
 	testData: Float32Array | null = null;
 	testLabelsData: Float32Array | null = null;
 
-	testImageSize = 28 * 28;
+	imageSize = 28 * 28;
 	testImagesCount = 10000;
 
 	trainImagesCount = 60000;
@@ -154,7 +154,7 @@ export class MNISTDatasource implements Datasource {
 		return new MNISTDataSourceIterator(
 			batchSize,
 			data,
-			28 * 28,
+			this.imageSize,
 			labels,
 			10,
 			maxSize,
@@ -197,12 +197,12 @@ export class MNISTDatasource implements Datasource {
 		const testLabelsResponse = await fetch(`${path}/t10k-labels.idx1-ubyte`);
 		this.testLabelsData = this.onehot(new Uint8Array(await testLabelsResponse.arrayBuffer(), 8));
 
-		this.testImagesCount = this.testData.length / this.testImageSize;
-		this.trainImagesCount = this.trainData.length / this.testImageSize;
+		this.testImagesCount = this.testData.length / this.imageSize;
+		this.trainImagesCount = this.trainData.length / this.imageSize;
 
 		console.log(`Test images count ${this.testImagesCount}`);
 		console.log(`Train images count ${this.trainImagesCount}`);
-		console.log(this.testImageSize);
+		console.log(this.imageSize);
 	}
 
 	static ShowRandomImage(data: Float32Array) {

@@ -55,17 +55,15 @@ export class Dropout implements Layer {
 			this.maskData[i] = Math.random() < this.p ? 0 : this.scale;
 		}
 
-		// Upload mask to GPU
-		const mask = this.tm.getTensorBuffer(
-			`${this.name}_mask_out`,
+		// Upload mask to GPU (scoped tensor - only needed for this batch)
+		const mask = this.tm.getScopedTensor(
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
 			[M, N],
 			this.maskData,
 		);
 
-		// Ensure output buffer exists
-		const out = this.tm.getTensorBuffer(
-			`${this.name}_dropout_out`,
+		// Output buffer (scoped tensor - only needed for this batch)
+		const out = this.tm.getScopedTensor(
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			[M, N],
 		);

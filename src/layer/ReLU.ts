@@ -14,12 +14,10 @@ export class ReLU implements Layer {
 	}
 
 	forward(input: Tensor, isTraining: boolean): Tensor {
-
-		const output = this.tm.getTensorBuffer(
-			`${this.name}_out`,
+		// Use scoped tensor - kernel overwrites entire buffer, no initialization needed
+		const output = this.tm.getScopedTensor(
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
 			input.shape,
-			new Float32Array(input.size)
 		);
 
 		return this.kr.relu.run(input, output);

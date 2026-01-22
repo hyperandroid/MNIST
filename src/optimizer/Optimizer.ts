@@ -5,7 +5,7 @@ export type LRSchedule =
 	| { type: "cosine"; minLr: number; maxSteps: number };
 
 export interface Optimizer {
-	step(): void;
+	step(batchSizeOverride?: number): void;
 	zeroGrad(): void;
 	getLearningRate(): number;
 	setLearningRate(lr: number): void;
