@@ -6,9 +6,8 @@ import {Sequential} from "./layer/Sequential";
 import {Linear} from "./layer/Linear";
 import {heNormal, heUniform} from "./math/Utils";
 import {ReLU} from "./layer/ReLU";
-import {Dropout} from "./layer/Dropout";
 import {SGD} from "./optimizer/SGD";
-import {topologicalSort} from "./autograd/TopologicalSort";
+import {topologicalSort} from "./autograd/BackwardPass";
 
 /**
  * Initialize the GPU. If not present, no training will be possible.
@@ -69,7 +68,7 @@ const model = new Sequential(
 );
 
 const epochs = 10;
-const batchSize = 32;
+const batchSize = 16;
 
 
 const datasource = new MNISTDatasource();
@@ -92,6 +91,7 @@ async function train(epoch: number, iterator: MNISTDataSourceIterator) {
 
 		// 1. Zero gradients
 		optimizer.zeroGrad();
+		await GPUEnv.device.queue.onSubmittedWorkDone();
 
 		// 2. Prepare data
 		const data = iterator.next();
@@ -122,6 +122,9 @@ async function train(epoch: number, iterator: MNISTDataSourceIterator) {
 
 		// 5. Optimize, SGD
 		optimizer.step();
+
+		const logitsBuffer = await tm.readBuffer(logits.buffer, logits.sizeInBytes());
+		const lossBuffer = await tm.readBuffer(loss.buffer, loss.sizeInBytes());
 
 		await GPUEnv.device.queue.onSubmittedWorkDone();
 	} else {

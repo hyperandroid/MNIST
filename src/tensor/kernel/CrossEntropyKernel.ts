@@ -92,47 +92,47 @@ export class CrossEntropyKernel extends Kernel {
 
 	static xentropyWGSL = `
 		struct Params {
-  M : u32,
-  N : u32,
-};
-
-@group(0) @binding(0) var<storage, read> logits : array<f32>;
-@group(0) @binding(1) var<storage, read> labels : array<f32>; // one-hot
-@group(0) @binding(2) var<storage, read_write> loss : array<f32>;
-@group(0) @binding(3) var<uniform> params : Params;
-
-@compute @workgroup_size(256, 1, 1)
-fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
-  let row = gid.x;
-  if (row >= params.M) { return; }
-
-  let N = params.N;
-  let base = row * N;
-
-  // 1) max logit for stability
-  var m = logits[base];
-  for (var i = 1u; i < N; i = i + 1u) {
-    let z = logits[base + i];
-    if (z > m) { m = z; }
-  }
-
-  // 2) logsumexp
-  var sumExp = 0.0;
-  for (var i = 0u; i < N; i = i + 1u) {
-    sumExp = sumExp + exp(logits[base + i] - m);
-  }
-  let logSumExp = log(sumExp) + m;
-
-  // 3) cross entropy: -sum y_i * (z_i - logsumexp)
-  var ce = 0.0;
-  for (var i = 0u; i < N; i = i + 1u) {
-    let y = labels[base + i];
-    let z = logits[base + i];
-    ce = ce + y * (logSumExp - z);
-  }
-
-  loss[row] = ce;
-}
+		  M : u32,
+		  N : u32,
+		};
+		
+		@group(0) @binding(0) var<storage, read> logits : array<f32>;
+		@group(0) @binding(1) var<storage, read> labels : array<f32>; // one-hot
+		@group(0) @binding(2) var<storage, read_write> loss : array<f32>;
+		@group(0) @binding(3) var<uniform> params : Params;
+		
+		@compute @workgroup_size(256, 1, 1)
+		fn main(@builtin(global_invocation_id) gid : vec3<u32>) {
+		  let row = gid.x;
+		  if (row >= params.M) { return; }
+		
+		  let N = params.N;
+		  let base = row * N;
+		
+		  // 1) max logit for stability
+		  var m = logits[base];
+		  for (var i = 1u; i < N; i = i + 1u) {
+			let z = logits[base + i];
+			if (z > m) { m = z; }
+		  }
+		
+		  // 2) logsumexp
+		  var sumExp = 0.0;
+		  for (var i = 0u; i < N; i = i + 1u) {
+			sumExp = sumExp + exp(logits[base + i] - m);
+		  }
+		  let logSumExp = log(sumExp) + m;
+		
+		  // 3) cross entropy: -sum y_i * (z_i - logsumexp)
+		  var ce = 0.0;
+		  for (var i = 0u; i < N; i = i + 1u) {
+			let y = labels[base + i];
+			let z = logits[base + i];
+			ce = ce + y * (logSumExp - z);
+		  }
+		
+		  loss[row] = ce;
+		}
 
 	`;
 }
