@@ -2,6 +2,7 @@ import {MNISTDatasource, MNISTDataSourceIterator, MNISTDataSourceIteratorValue} 
 import {TensorManager} from "../tensor/TensorManager";
 import {KernelRegistry} from "../tensor/kernel/KernelRegistry";
 import {MNIST} from "./MNIST";
+import {GPUEnv} from "../GPUEnv";
 
 export type TesterState = "idle"
 	| "testing"
@@ -23,6 +24,7 @@ export class Tester {
 		readonly datasource: MNISTDatasource,
 		readonly onTestResult: (correct: number, total: number, current: number, size: number,) => void,
 		readonly onTestFinished: (correct: number, total: number,) => void,
+		readonly onWrongGuess: (imageData: Float32Array, predicted: number, label: number, errorCount: number) => void,
 		readonly batchSize: number = 32,
 	) {
 
@@ -112,6 +114,8 @@ export class Tester {
 		// Read back predictions
 		const probsData = await this.tm.readBuffer(probs.buffer, probs.sizeInBytes());
 
+		await GPUEnv.device.queue.onSubmittedWorkDone();
+
 		// Calculate accuracy
 		for (let i = 0; i < data.size; i++) {
 			// Find predicted class (argmax of probs)
@@ -136,6 +140,8 @@ export class Tester {
 
 			if (predicted === actual) {
 				this.testCorrect++;
+			} else {
+				this.onWrongGuess(data.data.subarray(i * 28 * 28, (i + 1) * 28 * 28), predicted, actual, this.testTotal-this.testCorrect);
 			}
 			this.testTotal++;
 		}

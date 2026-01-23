@@ -6,6 +6,7 @@ import {KernelRegistry} from "../tensor/kernel/KernelRegistry";
 import {GPUEnv} from "../GPUEnv";
 import {computeBackwardPass} from "../autograd/BackwardPass";
 import {MNIST} from "./MNIST";
+import {Tensor} from "../tensor/Tensor";
 
 export type TrainerState = "idle"
 	| "training"
@@ -95,7 +96,6 @@ export class Trainer {
 
 		// 1. Zero gradients
 		this.optimizer.zeroGrad();
-		await GPUEnv.device.queue.onSubmittedWorkDone();
 
 		// 2. Prepare data
 		const currentBatchSize = data.size;
@@ -119,10 +119,9 @@ export class Trainer {
 		const logits = this.mnist.model.forward(input, true);
 		const loss = this.kernelRegistry.crossEntropy.run(logits, labelsOneHot);
 
-		// 4. Backward (scope set inside topologicalSort)
+		// 4. Backward
+		this.tm.beginScope("bwd");
 		computeBackwardPass(this.tm, this.kernelRegistry, loss);
-
-		await this.sync();
 
 		// 5. Optimize, SGD
 		this.optimizer.step(currentBatchSize);

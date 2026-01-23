@@ -1,10 +1,10 @@
-import {GPUEnv} from "./GPUEnv";
-import {KernelRegistry} from "./tensor/kernel/KernelRegistry";
-import {TensorManager} from "./tensor/TensorManager";
-import {MNISTDatasource} from "./MNIST/MNISTDatasource";
-import {MNIST} from "./MNIST/MNIST";
-import {Trainer} from "./MNIST/Trainer";
-import {Tester} from "./MNIST/Tester";
+import {GPUEnv} from "../GPUEnv";
+import {KernelRegistry} from "../tensor/kernel/KernelRegistry";
+import {TensorManager} from "../tensor/TensorManager";
+import {MNISTDatasource} from "./MNISTDatasource";
+import {MNIST} from "./MNIST";
+import {Trainer} from "./Trainer";
+import {Tester} from "./Tester";
 
 await GPUEnv.init()
 
@@ -66,6 +66,42 @@ const tester = new Tester(
 		if (node !== null) {
 			node.innerHTML = out;
 		}
+	},
+	(imageData: Float32Array, guessed: number, label: number, errorCount: number) => {
+
+		if (errorCount >= 100) {
+			return;
+		}
+
+		const parent = document.createElement("span");
+		parent.style.display = "inline-block";
+		parent.style.margin = "2px";
+
+		const px = 5;
+		const canvas = document.createElement("canvas");
+		canvas.width = 28 * px;
+		canvas.height = 28 * px;
+		parent.appendChild(canvas);
+
+		const ctx = canvas.getContext("2d");
+		if (!ctx) {
+			throw new Error("MNISTDatasource: failed to get 2d canvas context");
+		}
+		for (let r = 0; r < 28; r++) {
+			for (let c = 0; c < 28; c++) {
+				const index = r * 28 + c;
+				const value = Math.floor(imageData[index] * 255);
+				ctx.fillStyle = `rgba(${value}, ${value}, ${value}, 1)`;
+				ctx.fillRect(c * px, r * px, px, px);
+			}
+		}
+
+		parent.appendChild(document.createElement("br"));
+		parent.appendChild(document.createTextNode(`Guessed: ${guessed}`));
+		parent.appendChild(document.createElement("br"));
+		parent.appendChild(document.createTextNode(`Expected: ${label}`));
+
+		document.body.appendChild(parent);
 	}
 );
 

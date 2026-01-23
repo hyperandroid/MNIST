@@ -7,8 +7,6 @@ export function computeBackwardPass(
 	kr: KernelRegistry,
 	loss: Tensor
 ): void {
-	// Begin backward scope for transient tensor allocation
-	tm.beginScope("bwd");
 
 	const visited = new Set<Tensor>();
 	const order: Tensor[] = [];
@@ -35,7 +33,7 @@ export function computeBackwardPass(
 
 	loss.gradient = tm.scopedOnes(loss.shape);
 
-	// order has topological order of parameters.
+	// order has topological order of parameters. we need inverse topological order to compute gradients.
 	for (let i = order.length - 1; i >= 0; i--) {
 		const t = order[i];
 		if (!t.gradFn || !t.gradient) {

@@ -1,0 +1,42 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>WebGPU WGSL MatMul (Compute)</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            padding: 16px;
+            background: #222;
+            color: #eee;
+        }
+
+        pre {
+            background: #111;
+            color: #eee;
+            padding: 12px;
+            overflow: auto;
+        }
+
+        #row {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .probability {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 20px;
+        }
+
+    </style>
+</head>
+<body>
+<h3>Dense [784 -> 128], ReLU, Dense [784 -> 10]</h3>
+<div id="row">
+</div>
+<script type="module" src="/src/MNIST/interactive/guess.ts"></script>
+</body>
+</html>

@@ -200,24 +200,4 @@ export class MNISTDatasource implements Datasource {
 		this.testImagesCount = this.testData.length / MNISTDatasource.imageSize;
 		this.trainImagesCount = this.trainData.length / MNISTDatasource.imageSize;
 	}
-
-	static ShowRandomImage(data: Float32Array) {
-		const canvas = document.createElement("canvas");
-		canvas.width = 28 * 10;
-		canvas.height = 28 * 10;
-		document.body.appendChild(canvas);
-		const ctx = canvas.getContext("2d");
-		if (!ctx) {
-			throw new Error("MNISTDatasource: failed to get 2d canvas context");
-		}
-		for (let r = 0; r < 28; r++) {
-			for (let c = 0; c < 28; c++) {
-				const index = r * 28 + c;
-				const value = Math.floor(data[index] * 255);
-				ctx.fillStyle = `rgba(${value}, ${value}, ${value}, 1)`;
-				ctx.fillRect(c * 10, r * 10, 10, 10);
-			}
-		}
-	}
-
 }

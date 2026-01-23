@@ -22,7 +22,7 @@ export class SGD implements Optimizer {
 	}
 
 	step(batchSizeOverride?: number) {
-		// Update learning rate based on schedule
+
 		this.updateLearningRate();
 
 		const effectiveBatchSize = batchSizeOverride ?? this.batchSize;
