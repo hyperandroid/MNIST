@@ -17,20 +17,22 @@ export class MatMulBackward implements GradientFunction {
 		readonly kr: KernelRegistry,
 	) {}
 
-	backward(gradOutput: Tensor): Tensor[] {
+	backward(gradOutput: Tensor): (Tensor | null)[] {
 		const [A, B] = this.savedTensors;
 
-		// dA = gradOutput @ B^T  (if A requires grad)
-		const BT = this.kr.transpose.run(B);
-		const gradA = A.requiresGradient
-			? this.kr.matmul.run(gradOutput, BT)
-			: gradOutput; // placeholder, won't be used
+		// dA = gradOutput @ B^T  (only compute if A requires grad)
+		let gradA: Tensor | null = null;
+		if (A.requiresGradient) {
+			const BT = this.kr.transpose.run(B);
+			gradA = this.kr.matmul.run(gradOutput, BT);
+		}
 
-		// dB = A^T @ gradOutput  (if B requires grad)
-		const AT = this.kr.transpose.run(A);
-		const gradB = B.requiresGradient
-			? this.kr.matmul.run(AT, gradOutput)
-			: gradOutput; // placeholder, won't be used
+		// dB = A^T @ gradOutput  (only compute if B requires grad)
+		let gradB: Tensor | null = null;
+		if (B.requiresGradient) {
+			const AT = this.kr.transpose.run(A);
+			gradB = this.kr.matmul.run(AT, gradOutput);
+		}
 
 		return [gradA, gradB];
 	}

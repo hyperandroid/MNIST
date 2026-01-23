@@ -44,21 +44,24 @@ export function computeBackwardPass(
 
 		for (let j = 0; j < (t.parents ?? []).length; j++) {
 			const parent = t.parents![j];
-			if (!parent.requiresGradient) {
+			const inputGrad = inputGrads[j];
+
+			// Skip if parent doesn't need gradient or gradient wasn't computed
+			if (!parent.requiresGradient || inputGrad === null) {
 				continue;
 			}
 
 			if (parent.gradient === undefined) {
 				// First gradient - initialize the buffer
-				parent.gradient =  tm.getTensorBuffer(
-						`${parent.name}_grad`,
-						GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
-						inputGrads[j].shape,
-						new Float32Array(inputGrads[j].size).fill(0)
-					);
+				parent.gradient = tm.getTensorBuffer(
+					`${parent.name}_grad`,
+					GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
+					inputGrad.shape,
+					new Float32Array(inputGrad.size).fill(0)
+				);
 			}
 
-			kr.inplaceAdd.run(parent.gradient, inputGrads[j]);
+			kr.inplaceAdd.run(parent.gradient, inputGrad);
 		}
 	}
 }

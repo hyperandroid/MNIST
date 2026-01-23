@@ -42,7 +42,7 @@ src/
 │       └── SoftmaxCrossEntropyBackward.ts
 ├── optimizer/
 │   ├── Optimizer.ts                    # Optimizer interface with LR scheduling
-│   └── SGD.ts                          # SGD with scheduling and gradient clipping
+│   └── SGD.ts                          # SGD with learning rate scheduling
 └── tensor/
     ├── Tensor.ts                       # GPU-backed tensor with autograd support
     ├── TensorManager.ts                # Buffer lifecycle management
@@ -64,8 +64,7 @@ src/
         ├── SoftmaxCEBackwardKernel.ts  # Autograd support
         ├── ScalarMulKernel.ts          # Optimizer support
         ├── InplaceAddKernel.ts         # Optimizer support
-        ├── SumAllKernel.ts             # Optimizer support
-        └── ClipGradNormKernel.ts       # Gradient clipping support
+        └── SumAllKernel.ts             # Optimizer support
 ```
 
 ## Architecture
@@ -123,7 +122,6 @@ Each kernel:
 - **ScalarMulKernel**: `output = input * scalar` (for learning rate scaling)
 - **InplaceAddKernel**: `target += source` (for parameter updates)
 - **SumAllKernel**: Reduces all elements to scalar [1,1] (for loss reduction)
-- **ClipGradNormKernel**: In-place L2 norm gradient clipping with parallel reduction
 
 ### WebGPU Compute Pattern
 
@@ -231,7 +229,7 @@ interface Optimizer {
 
 **SGD Optimizer** (`src/optimizer/SGD.ts`):
 ```typescript
-const optimizer = new SGD(model.parameters(), learningRate, tm, kr, batchSize, maxGradNorm);
+const optimizer = new SGD(model.parameters(), learningRate, tm, kr, batchSize);
 optimizer.setSchedule({ type: "cosine", minLr: 0.001, maxSteps: totalSteps });
 optimizer.zeroGrad();  // Before forward pass
 // ... forward, backward ...
@@ -240,7 +238,6 @@ optimizer.step(currentBatchSize);  // Update: param = param - lr * grad / batchS
 
 Features:
 - Learning rate scheduling (constant, step decay, exponential decay, cosine annealing)
-- Optional gradient clipping by L2 norm via `maxGradNorm` parameter
 - Batch size normalization of gradients
 
 ### MNIST Model

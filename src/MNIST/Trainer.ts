@@ -127,6 +127,9 @@ export class Trainer {
 		this.optimizer.step(currentBatchSize);
 
 		await this.sync();
+
+		// 6. Flush destroyed buffers to free GPU memory
+		this.tm.flushDestroyQueue();
 	}
 
 	async trainStep() {

@@ -15,7 +15,6 @@ export class SGD implements Optimizer {
 		private tm: TensorManager,
 		private kr: KernelRegistry,
 		private batchSize: number,
-		private maxGradNorm: number | null = null,
 	) {
 		this.baseLr = lr;
 		this.currentLr = lr;
@@ -29,11 +28,6 @@ export class SGD implements Optimizer {
 
 		for (const p of this.params) {
 			if (!p.gradient) continue;
-
-			// Clip gradient by norm if maxGradNorm is set
-			if (this.maxGradNorm !== null) {
-				this.kr.clipGradNorm.run(p.gradient, this.maxGradNorm);
-			}
 
 			// p = p - lr * grad
 			const update = this.kr.scalarMul.run(p.gradient, -this.currentLr / effectiveBatchSize);

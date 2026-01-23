@@ -5,12 +5,12 @@ import {MNISTDatasource} from "../MNISTDatasource";
 import {MNIST} from "../MNIST";
 import {PaintLayer} from "./PaintLayer";
 
-await GPUEnv.init()
+await GPUEnv.init();
 
 const tm = new TensorManager(GPUEnv.device);
 const kernelRegistry = new KernelRegistry(GPUEnv.device, tm);
 
-// createa  model,
+// create model,
 const mnist = new MNIST(tm, kernelRegistry);
 // load pre-trained model. 97.35% accuracy on the test set.
 await mnist.readSnapshot();
@@ -43,7 +43,7 @@ const painter = new PaintLayer(
 	wrapper.style.gap = "6px";
 
 	let index = 0;
-	const sliders = Array.from({ length: 10 }, () => {
+	Array.from({ length: 10 }, () => {
 
 		const line = document.createElement("span");
 		line.classList.add("probability");
@@ -110,7 +110,7 @@ function setProbability(probsData: Float32Array) {
 
 		const nodes = document.getElementById(`probability-slider-${j}`);
 		if (nodes !== null) {
-			nodes.value = (100*prob).toFixed(2);
+			(nodes as any).value = (100*prob).toFixed(2);
 		}
 
 		const percentage = (prob * 100).toFixed(2);

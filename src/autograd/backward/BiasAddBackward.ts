@@ -17,16 +17,16 @@ export class BiasAddBackward implements GradientFunction {
 		readonly kr: KernelRegistry,
 	) {}
 
-	backward(gradOutput: Tensor): Tensor[] {
+	backward(gradOutput: Tensor): (Tensor | null)[] {
 		const [input, bias] = this.savedTensors;
 
 		// dX = gradOutput (identity, same shape)
-		const gradInput = gradOutput;
+		const gradInput = input.requiresGradient ? gradOutput : null;
 
-		// db = sum(gradOutput, axis=0) -> [1, N]
+		// db = sum(gradOutput, axis=0) -> [1, N] (only compute if bias requires grad)
 		const gradBias = bias.requiresGradient
 			? this.kr.sumReduce.run(gradOutput)
-			: gradOutput; // placeholder
+			: null;
 
 		return [gradInput, gradBias];
 	}

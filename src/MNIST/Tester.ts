@@ -111,10 +111,8 @@ export class Tester {
 		const logits = this.mnist.model.forward(input, false);
 		const probs = this.kernelRegistry.softmax.run(logits);
 
-		// Read back predictions
+		// Read back predictions (readBuffer already syncs GPU work)
 		const probsData = await this.tm.readBuffer(probs.buffer, probs.sizeInBytes());
-
-		await GPUEnv.device.queue.onSubmittedWorkDone();
 
 		// Calculate accuracy
 		for (let i = 0; i < data.size; i++) {
@@ -138,12 +136,13 @@ export class Tester {
 				}
 			}
 
+			this.testTotal++;
 			if (predicted === actual) {
 				this.testCorrect++;
 			} else {
-				this.onWrongGuess(data.data.subarray(i * 28 * 28, (i + 1) * 28 * 28), predicted, actual, this.testTotal-this.testCorrect);
+				const errorCount = this.testTotal - this.testCorrect;
+				this.onWrongGuess(data.data.subarray(i * 28 * 28, (i + 1) * 28 * 28), predicted, actual, errorCount);
 			}
-			this.testTotal++;
 		}
 	}
 
