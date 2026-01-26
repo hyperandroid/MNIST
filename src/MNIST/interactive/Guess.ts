@@ -197,7 +197,7 @@ function generateImage(div: HTMLDivElement, parameter: Float32Array, cols: numbe
 		for (let c = 0; c < cols; c++) {
 			const index = r * cols + c;
 			const col = Math.floor(p[index] * 255);
-			ctx.fillStyle = `rgba(${col}, ${col}, ${col}, 1)`;
+			ctx.fillStyle = `rgba(${col}, ${col}, ${col*.8}, 1)`;
 			ctx.fillRect(c * scale, r * scale, scale, scale);
 		}
 	}
