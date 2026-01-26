@@ -48,11 +48,35 @@ export class PaintLayer {
 				return;
 			}
 
-			this.setModel(e);
+			this.setModel(e.offsetX, e.offsetY, e.altKey);
 		});
 
 		this.canvas.addEventListener("click", (e) => {
-			this.setModel(e);
+			this.setModel(e.offsetX, e.offsetY, e.altKey);
+		});
+
+		// Touch support
+		this.canvas.addEventListener("touchstart", (e) => {
+			e.preventDefault();
+			this.capturing = true;
+			const touch = e.touches[0];
+			const rect = this.canvas.getBoundingClientRect();
+			this.setModel(touch.clientX - rect.left, touch.clientY - rect.top, false);
+		});
+
+		this.canvas.addEventListener("touchend", (e) => {
+			e.preventDefault();
+			this.capturing = false;
+		});
+
+		this.canvas.addEventListener("touchmove", (e) => {
+			e.preventDefault();
+			if (!this.capturing) {
+				return;
+			}
+			const touch = e.touches[0];
+			const rect = this.canvas.getBoundingClientRect();
+			this.setModel(touch.clientX - rect.left, touch.clientY - rect.top, false);
 		});
 
 		this.root.appendChild(document.createTextNode(`${this.rows}x${this.columns}, padded to 28x28`));
@@ -104,12 +128,12 @@ export class PaintLayer {
 		this.model[y * this.columns + x] = Math.max(0, Math.min(1, v + factor));
 	}
 
-	private setModel(e: MouseEvent) {
+	private setModel(offsetX: number, offsetY: number, erase: boolean) {
 
-		const x = Math.floor(e.offsetX / PX);
-		const y = Math.floor(e.offsetY / PX);
+		const x = Math.floor(offsetX / PX);
+		const y = Math.floor(offsetY / PX);
 
-		if (e.altKey) {
+		if (erase) {
 			this.incColor(x,y, -1);
 		} else {
 			this.incColor(x,y);

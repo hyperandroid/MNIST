@@ -122,6 +122,66 @@
         canvas {
             border-radius: 4px;
         }
+
+        /* Mobile responsive styles */
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+                margin-bottom: 16px;
+            }
+
+            h3 {
+                font-size: 1.1rem;
+            }
+
+            .section {
+                padding: 16px;
+                margin-bottom: 16px;
+            }
+
+            #summary p {
+                font-size: 0.9em;
+            }
+
+            #row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 20px;
+            }
+
+            .probability {
+                gap: 8px;
+            }
+
+            .probability input[type="range"] {
+                width: 120px;
+            }
+
+            #layers-container,
+            #parameters-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            #layers-container .description p,
+            #parameters-container .description {
+                font-size: 0.85em;
+            }
+
+            button {
+                padding: 10px 20px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .probability input[type="range"] {
+                width: 80px;
+            }
+        }
     </style>
 </head>
 <body>
