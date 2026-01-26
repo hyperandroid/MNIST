@@ -6,23 +6,22 @@ A neural network trained and evaluated entirely in-browser using WebGPU compute 
 
 ## Motivation
 
-This project could be easily done using any of the existing deep learning libraries,
-Pytorch, Tensorflow, etc. However, it is build from scratch.
+This project could easily be done with PyTorch or TensorFlow. I built it from scratch anyway.
 
-Over the months, I have seen LLM have caught up very quickly. They are an invaluable tool for making sense of my
-own thoughts and intuitions. They have an unbelievable ability to put thoughts into words and understand them.
+Over the past months, I've watched LLMs catch up to tasks I thought were uniquely human. They've become invaluable for making sense of my own thoughts - an unnerving ability to put into words what I couldn't articulate myself. Thoughts or intuitions, nor matter what, LLM have a magic way of writting them down into words.
 
-On the contrary, I don't know anything about LLMs. I have no idea how they work internally. How they are trained.
-How they are evaluated. I could be considered an absolute ML illiterate. Until now. This project is my attempt to
-understand LLMs and ML from the fundamental level. By building all parts of the pipeline I have learned the fundamentals
-to the point where I can train a neural network from scratch in the browser. An MLP is an old school machine learning
-algorithm. IIRC it dates back to the 1950s. 
+And yet, I understood nothing about how they worked. Not how they trained. Not how they reasoned. Not why they failed. I was using tools I couldn't see inside, and that felt dangerous.
 
-This project is the foundation for my continuous learning journey. It is a naive implementation. Unoptimized. Tensors
-limited to two dimensions. Not even close to be production ready. But enough to train and solve MNIST.
+In an age where knowledge has an amortized cost of zero, understanding has become the only defensible ground. Information is free. Tutorials are everywhere. But if you don't build the intuition yourself, the tools will outpace  
+you. And eventually, replace you.
+
+This project is my attempt to start from fundamentals. An MLP is old technology - it dates to the 1950s. But by implementing every tensor operation, every backward pass, every gradient update from scratch, I've built something I
+actually understand. It's naive. Unoptimized. Limited to two dimensions. Not production-ready. But it trains, it learns, and I know exactly why.
+
+This is the foundation. Not the destination.   
 
 Big thanks to [TiniTorch](https://mlsysbook.ai/tinytorch/preface.html). This project is the Typescript+WebGPU 
-implementation of the [Foundation Tier](https://mlsysbook.ai/tinytorch/tiers/foundation.html).
+implementation of its [Foundation Tier](https://mlsysbook.ai/tinytorch/tiers/foundation.html).
 
 ## Overview
 
@@ -96,7 +95,7 @@ src/
 
 ### Requirements
 
-- A browser with WebGPU support (Chrome 113+, Edge 113+, or Firefox Nightly)
+- A browser with WebGPU support. This model can be trained in my iPhone 15 pro.
 - Node.js 18+
 
 ### Development
