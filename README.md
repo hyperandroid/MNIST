@@ -8,14 +8,14 @@ A neural network trained and evaluated entirely in-browser using WebGPU compute 
 
 This project could easily be done with PyTorch or TensorFlow. I built it from scratch anyway.
 
-Over the past months, I've watched LLMs catch up to tasks I thought were uniquely human. They've become invaluable for making sense of my own thoughts - an unnerving ability to put into words what I couldn't articulate myself. Thoughts or intuitions, nor matter what, LLM have a magic way of writting them down into words.
+Over the past months, I've watched LLMs catch up to tasks I thought were uniquely human. They've become invaluable for making sense of my own thoughts. An unbelievable ability to put into words what I couldn't articulate myself. Thoughts or intuitions, nor matter what, LLM have a magic way of writting them down into words.
 
-And yet, I understood nothing about how they worked. Not how they trained. Not how they reasoned. Not why they failed. I was using tools I couldn't see inside, and that felt dangerous.
+Turns out, I understood nothing about how they worked. Nor how they trained. Nor how they reasoned. Nor why they failed. I was using tools I couldn't see inside, and that felt asymmetrical.
 
-In an age where knowledge has an amortized cost of zero, understanding has become the only defensible ground. Information is free. Tutorials are everywhere. But if you don't build the intuition yourself, the tools will outpace  
-you. And eventually, replace you.
+In an age where knowledge has an amortized cost of zero, understanding has become the only defensible ground. Information is free. Tutorials are everywhere. But if you don't build the intuition yourself, the tools will be more like magic over time. 
+And eventually your tools will even replace you. Fortunately, I don't define myself by my coding skills. One of my traits is surely to have a hacker mindset, e.g., understand problems from the ground up.
 
-This project is my attempt to start from fundamentals. An MLP is old technology - it dates to the 1950s. But by implementing every tensor operation, every backward pass, every gradient update from scratch, I've built something I
+This project is my attempt to start from fundamentals. An MLP is an old technology, it dates to the 1950s. But by implementing every tensor operation, every backward pass, every gradient update from scratch, I've built something I
 actually understand. It's naive. Unoptimized. Limited to two dimensions. Not production-ready. But it trains, it learns, and I know exactly why.
 
 This is the foundation. Not the destination.   
