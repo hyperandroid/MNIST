@@ -24,7 +24,35 @@ await datasource
 		throw new Error("Failed to load data source: " + e)
 	});
 
-async function train() {
+const timerElement = document.getElementById("timer")!;
+let timerInterval: number | null = null;
+let startTime: number = 0;
+
+function formatTime(ms: number): string {
+	const minutes = Math.floor(ms / 60000);
+	const seconds = Math.floor((ms % 60000) / 1000);
+	const millis = ms % 1000;
+	return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}.${millis.toString().padStart(3, "0")}`;
+}
+
+function startTimer() {
+	startTime = performance.now();
+	timerInterval = window.setInterval(() => {
+		const elapsed = performance.now() - startTime;
+		timerElement.textContent = formatTime(Math.floor(elapsed));
+	}, 10);
+}
+
+function stopTimer() {
+	if (timerInterval !== null) {
+		clearInterval(timerInterval);
+		timerInterval = null;
+		const elapsed = performance.now() - startTime;
+		timerElement.textContent = formatTime(Math.floor(elapsed));
+	}
+}
+
+async function train(epochs: number, batchSize: number) {
 
 	const trainer = new Trainer(
 		tm,
@@ -32,6 +60,8 @@ async function train() {
 		mnist,
 		datasource,
 		() => {
+			stopTimer();
+			startBtn.textContent = "Done";
 			requestAnimationFrame(() => tester.startTesting());
 		},
 		(epoch, epochs, current, total) => {
@@ -41,8 +71,11 @@ async function train() {
 				node.innerHTML = out;
 			}
 		},
+		epochs,
+		batchSize,
 	);
 	await trainer.initialize();
+	startTimer();
 	trainer.startTraining();
 }
 
@@ -73,11 +106,13 @@ const tester = new Tester(
 			return;
 		}
 
-		const parent = document.createElement("span");
-		parent.style.display = "inline-block";
-		parent.style.margin = "2px";
+		const container = document.getElementById("errors-container");
+		if (!container) return;
 
-		const px = 5;
+		const parent = document.createElement("div");
+		parent.className = "error-sample";
+
+		const px = 4;
 		const canvas = document.createElement("canvas");
 		canvas.width = 28 * px;
 		canvas.height = 28 * px;
@@ -96,14 +131,32 @@ const tester = new Tester(
 			}
 		}
 
-		parent.appendChild(document.createElement("br"));
-		parent.appendChild(document.createTextNode(`Guessed: ${guessed}`));
-		parent.appendChild(document.createElement("br"));
-		parent.appendChild(document.createTextNode(`Expected: ${label}`));
+		const label1 = document.createElement("span");
+		label1.textContent = `Predicted: ${guessed}`;
+		parent.appendChild(label1);
 
-		document.body.appendChild(parent);
+		const label2 = document.createElement("span");
+		label2.textContent = `Actual: ${label}`;
+		parent.appendChild(label2);
+
+		container.appendChild(parent);
 	}
 );
 
 await tester.initialize();
-await train();
+
+const startBtn = document.getElementById("start-btn") as HTMLButtonElement;
+const epochsSelect = document.getElementById("epochs-select") as HTMLSelectElement;
+const batchSizeSelect = document.getElementById("batchsize-select") as HTMLSelectElement;
+
+startBtn.addEventListener("click", async () => {
+	const epochs = parseInt(epochsSelect.value, 10);
+	const batchSize = parseInt(batchSizeSelect.value, 10);
+
+	startBtn.disabled = true;
+	epochsSelect.disabled = true;
+	batchSizeSelect.disabled = true;
+	startBtn.textContent = "Training...";
+
+	await train(epochs, batchSize);
+});

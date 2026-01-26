@@ -2,33 +2,95 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <title>WebGPU WGSL MatMul (Compute)</title>
+    <title>MNIST Interactive Demo</title>
     <style>
-        body {
-            font-family: system-ui, sans-serif;
-            padding: 16px;
-            background: #222;
-            color: #eee;
+        * {
+            box-sizing: border-box;
         }
 
-        pre {
-            background: #111;
-            color: #eee;
-            padding: 12px;
-            overflow: auto;
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 24px;
+            background: #f5f6f8;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+
+        h1 {
+            color: #1a202c;
+            font-weight: 600;
+            margin-bottom: 24px;
+        }
+
+        h3 {
+            color: #2d3748;
+            font-weight: 600;
+            margin: 0 0 12px 0;
+        }
+
+        p {
+            color: #4a5568;
+            margin: 8px 0;
+        }
+
+        .section {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .section h3 {
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+
+        #summary {
+            background: #edf2f7;
+            border-left: 4px solid #4a5568;
+        }
+
+        #row-container {
+            background: #fff;
         }
 
         #row {
             display: flex;
             align-items: center;
             gap: 30px;
+            padding: 16px 0;
+        }
+
+        #layers-container {
+            background: #fafbfc;
+            width: fit-content;
+            min-width: 100%;
+        }
+
+        #layers-container .description {
+            color: #718096;
+            font-size: 0.9em;
+        }
+
+        #parameters-container {
+            background: #fff;
+            width: fit-content;
+            min-width: 100%;
         }
 
         .probability {
             display: flex;
             flex-direction: row;
-            align-items: flex-start;
-            gap: 20px;
+            align-items: center;
+            gap: 12px;
+            padding: 4px 0;
+        }
+
+        .probability input[type="range"] {
+            accent-color: #4a5568;
         }
 
         .layers {
@@ -43,41 +105,53 @@
             align-items: flex-start;
         }
 
+        button {
+            background: #4a5568;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #2d3748;
+        }
+
+        canvas {
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
-<h3>MNIST tester</h3>
+<h1>MNIST Interactive Demo</h1>
 
-<div>
-    <p>This model has been trained on the MNIST dataset. Its accuracy is roughly 97.5%. Still, this means 250 prediction errors out of the 10,000 test image set.</p>
-    <p>The model is a Multiple layer perceptron of the form [ Dense [784 -> 128], ReLU, Dense [784 -> 10] ].</p>
-    <p>Dense weight layers have been initialised with He Uniformly distributed<p>
-    <p>A Stochastic Gradient Descent without momentum has been used as model optimizer.</p>
-    <p>The model has been trained in-browser using WebGPU as Tensor kernel backend.</p>
-    <p>Take into account that despite the high accuracy recognizing MNIST test set, your handwriting might differ significantly and hence wrong results might be emitted.</p>
+<div id="summary" class="section">
+    <h3>About This Model</h3>
+    <p>This model has been trained on the MNIST dataset with an accuracy of roughly 97.5% (250 prediction errors out of 10,000 test images).</p>
+    <p>Architecture: Multi-layer perceptron [ Dense [784 → 128], ReLU, Dense [128 → 10] ]</p>
+    <p>Weight initialization: He uniform distribution. Optimizer: Stochastic Gradient Descent (no momentum).</p>
+    <p>Trained entirely in-browser using WebGPU compute shaders.</p>
+    <p class="description">Note: Your handwriting may differ from the MNIST training data, which could affect recognition accuracy.</p>
 </div>
 
-<div id="row-container">
-    <h3>&nbsp;</h3>
-    <h3>Interactive MNIST digit recognizer.</h3>
+<div id="row-container" class="section">
+    <h3>Draw a Digit</h3>
     <div id="row"></div>
 </div>
 
-<div id="layers-container">
-    <h3>&nbsp;</h3>
-    <h3>Live MLP input/output</h3>
-    <div>
-        <p>Data flow through layers. As you draw a character you will see activated neurons.</p>
-        <p>In our model, all layers are fully connected to the next. Each neuron should have a connection to every neuron on the next layer. For simplicity, we removed these lines.</p>
-        <p>The number of neurons per layer is 784, 128, 128, 10. We scale the neuron size to fit all the available space.</p>
+<div id="layers-container" class="section">
+    <h3>Layer Activations</h3>
+    <div class="description">
+        <p>Visualizes data flowing through each layer as you draw. All layers are fully connected (784 → 128 → 128 → 10 neurons).</p>
     </div>
     <div id="layers"></div>
 </div>
 
-<div id="parameters-container">
-    <h3>Learned parameters</h3>
-    <p>These are the weight and bias learned matrices of our pre-trained MNIST model.</p>
-    <p>These values are normalized to the range 0..1 to have a proper visual output.</p>
+<div id="parameters-container" class="section">
+    <h3>Learned Parameters</h3>
+    <p class="description">Weight and bias matrices from the pre-trained model, normalized to 0–1 range for visualization.</p>
 </div>
 
 <script type="module" src="/src/MNIST/interactive/guess.ts"></script>
