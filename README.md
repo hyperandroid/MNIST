@@ -119,10 +119,6 @@ npm run preview   # Preview production build locally
 npm run deploy    # Deploy to GitHub Pages
 ```
 
-## Live demo
-
-https://hyperandroid.github.io/MNIST/
-
 ## Dataset
 
 MNIST dataset from: https://git-disl.github.io/GTDLBench/datasets/mnist_datasets/
