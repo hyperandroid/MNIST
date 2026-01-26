@@ -21,8 +21,9 @@ export class PaintLayer {
 		readonly columns: number = 24,
 		readonly showPadded = false,
 	) {
-		this.root = document.createElement("span");
-		this.root.style.display = "inline-block";
+		this.root = document.createElement("div");
+		const row = document.getElementById("row")!;
+		row.appendChild(this.root);
 
 		this.canvas = document.createElement("canvas");
 		this.canvas.width = this.columns * PX;
@@ -53,9 +54,6 @@ export class PaintLayer {
 		this.canvas.addEventListener("click", (e) => {
 			this.setModel(e);
 		});
-
-		const row = document.getElementById("row")!;
-		row.appendChild(this.root);
 
 		this.root.appendChild(document.createTextNode(`${this.rows}x${this.columns}, padded to 28x28`));
 		this.root.appendChild(document.createElement("br"));

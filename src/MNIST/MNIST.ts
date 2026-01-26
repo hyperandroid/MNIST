@@ -39,7 +39,7 @@ export class MNIST {
 		);
 	}
 
-	async readSnapshot() {
+	async readSnapshot(): Promise<Float32Array[]> {
 		const path = "data/trained_768_128_10";
 
 		const firstLayerWeightsR = await fetch(`${path}/model-first_weights.bin`);
@@ -55,6 +55,8 @@ export class MNIST {
 		const secondBias = new Float32Array(await secondLayerBiasR.arrayBuffer());
 		this.tm.writeBufferF32(this.secondLayer.parameters()[0].buffer, secondWeights);
 		this.tm.writeBufferF32(this.secondLayer.parameters()[1].buffer, secondBias);
+
+		return [firstWeights, firstBias, secondWeights, secondBias];
 	}
 
 	async restart() {

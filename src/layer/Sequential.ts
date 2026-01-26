@@ -4,6 +4,8 @@ import {TensorManager} from "../tensor/TensorManager";
 
 export class Sequential implements Layer {
 
+	inputTensor: Tensor | undefined;
+
 	readonly layers: Layer[] = [];
 
 	constructor(
@@ -15,6 +17,8 @@ export class Sequential implements Layer {
 	}
 
 	forward(input: Tensor, isTraining: boolean): Tensor {
+		this.inputTensor = input;
+
 		for (const l of this.layers) {
 			input = l.forward(input, isTraining);
 		}

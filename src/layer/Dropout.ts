@@ -15,6 +15,8 @@ import {KernelRegistry} from "../tensor/kernel/KernelRegistry";
  */
 export class Dropout implements Layer {
 
+	inputTensor: Tensor | undefined;
+
 	readonly name: string;
 	readonly p: number;
 	readonly scale: number;
@@ -37,6 +39,9 @@ export class Dropout implements Layer {
 	}
 
 	forward(input: Tensor, isTraining: boolean): Tensor {
+
+		this.inputTensor = input;
+
 		if (!isTraining) {
 			return input;
 		}

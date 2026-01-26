@@ -112,6 +112,7 @@ export class TensorManager {
 		byteLength: number,
 		srcOffset = 0
 	) {
+		/*
 		const rb = this.ensureReadback(byteLength);
 
 		const encoder = this.device.createCommandEncoder();
@@ -126,6 +127,21 @@ export class TensorManager {
 		rb.unmap();
 
 		return new Float32Array(copy);
+
+		 */
+		const rb = this.ensureReadback(byteLength);
+
+		const encoder = this.device.createCommandEncoder();
+		encoder.copyBufferToBuffer(srcBuffer, srcOffset, rb, 0, byteLength);
+		this.device.queue.submit([encoder.finish()]);
+
+		await rb.mapAsync(GPUMapMode.READ, 0, byteLength);
+		const mapped = rb.getMappedRange(0, byteLength);
+		const copy = mapped.slice(0);
+		rb.unmap();
+
+		return new Float32Array(copy);
+
 	}
 
 	private ensureReadback(sizeBytes: number) {

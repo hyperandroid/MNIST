@@ -5,6 +5,8 @@ import {TensorManager} from "../tensor/TensorManager";
 
 export class ReLU implements Layer {
 
+	inputTensor: Tensor | undefined;
+
 	constructor(
 		readonly tm: TensorManager,
 		readonly kr: KernelRegistry,
@@ -14,6 +16,8 @@ export class ReLU implements Layer {
 	}
 
 	forward(input: Tensor, isTraining: boolean): Tensor {
+		this.inputTensor = input;
+
 		// Use scoped tensor - kernel overwrites entire buffer, no initialization needed
 		const output = this.tm.getScopedTensor(
 			GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,

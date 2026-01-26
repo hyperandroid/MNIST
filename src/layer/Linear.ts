@@ -22,6 +22,8 @@ export type LinearInitializer = {
  */
 export class Linear implements Layer {
 
+	inputTensor: Tensor | undefined;
+
 	readonly name: string;
 
 	readonly weights: Tensor;
@@ -55,6 +57,8 @@ export class Linear implements Layer {
 	}
 
 	forward(input: Tensor, isTraining: boolean): Tensor {
+
+		this.inputTensor = input;
 
 		const matmulout = this.tm.getTensorBuffer(
 			`${this.name}_mmout`,

@@ -31,12 +31,55 @@
             gap: 20px;
         }
 
+        .layers {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .parameter-image {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
     </style>
 </head>
 <body>
-<h3>Dense [784 -> 128], ReLU, Dense [784 -> 10]</h3>
-<div id="row">
+<h3>MNIST tester</h3>
+
+<div>
+    <p>This model has been trained on the MNIST dataset. Its accuracy is roughly 97.5%. Still, this means 250 prediction errors out of the 10,000 test image set.</p>
+    <p>The model is a Multiple layer perceptron of the form [ Dense [784 -> 128], ReLU, Dense [784 -> 10] ].</p>
+    <p>Dense weight layers have been initialised with He Uniformly distributed<p>
+    <p>A Stochastic Gradient Descent without momentum has been used as model optimizer.</p>
+    <p>The model has been trained in-browser using WebGPU as Tensor kernel backend.</p>
+    <p>Take into account that despite the high accuracy recognizing MNIST test set, your handwriting might differ significantly and hence wrong results might be emitted.</p>
 </div>
+
+<div id="row-container">
+    <h3>&nbsp;</h3>
+    <h3>Interactive MNIST digit recognizer.</h3>
+    <div id="row"></div>
+</div>
+
+<div id="layers-container">
+    <h3>&nbsp;</h3>
+    <h3>Live MLP input/output</h3>
+    <div>
+        <p>Data flow through layers. As you draw a character you will see activated neurons.</p>
+        <p>In our model, all layers are fully connected to the next. Each neuron should have a connection to every neuron on the next layer. For simplicity, we removed these lines.</p>
+        <p>The number of neurons per layer is 784, 128, 128, 10. We scale the neuron size to fit all the available space.</p>
+    </div>
+    <div id="layers"></div>
+</div>
+
+<div id="parameters-container">
+    <h3>Learned parameters</h3>
+    <p>These are the weight and bias learned matrices of our pre-trained MNIST model.</p>
+    <p>These values are normalized to the range 0..1 to have a proper visual output.</p>
+</div>
+
 <script type="module" src="/src/MNIST/interactive/guess.ts"></script>
 </body>
 </html>
