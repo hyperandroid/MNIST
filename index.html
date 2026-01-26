@@ -1,0 +1,48 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>WebGPU MNIST</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            padding: 16px;
+            background: #222;
+            color: #eee;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        a {
+            color: #6cf;
+        }
+
+        .link-section {
+            margin: 24px 0;
+            padding: 16px;
+            background: #333;
+            border-radius: 8px;
+        }
+
+        .link-section h3 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+<h1>WebGPU MNIST Demo</h1>
+<p>A neural network trained entirely in-browser using WebGPU compute shaders.</p>
+
+<div class="link-section">
+    <h3><a href="guess.html">Interactive Digit Recognizer</a></h3>
+    <p>Draw digits with your mouse and watch the pre-trained model predict in real-time. Visualizes data flowing through each layer of the neural network as you draw.</p>
+</div>
+
+<div class="link-section">
+    <h3><a href="train_and_test.html">Train and Test</a></h3>
+    <p>Train the MNIST model from scratch in your browser. Runs the full training loop on the 60,000 training images, then evaluates accuracy on the 10,000 test images.</p>
+    <p>It runs 15 epochs with a batch size of 32. On a M3 Max takes around 7 minutes. A batch of 64 takes roughly 4 minutes.</p>
+</div>
+
+</body>
+</html>
