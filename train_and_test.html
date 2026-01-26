@@ -160,6 +160,75 @@
         .error-sample canvas {
             border-radius: 2px;
         }
+
+        /* Mobile responsive styles */
+        @media (max-width: 600px) {
+            body {
+                padding: 12px;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            h3 {
+                font-size: 1.1rem;
+            }
+
+            .section {
+                padding: 16px;
+                margin-bottom: 16px;
+            }
+
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+
+            label {
+                justify-content: space-between;
+            }
+
+            select {
+                flex: 1;
+                min-width: 100px;
+            }
+
+            button {
+                width: 100%;
+                padding: 12px 20px;
+            }
+
+            .status {
+                font-size: 13px;
+                padding: 10px 12px;
+                word-break: break-word;
+            }
+
+            .timer-section {
+                width: 100%;
+                padding: 12px;
+            }
+
+            .timer {
+                font-size: 24px;
+                letter-spacing: 1px;
+            }
+
+            .timer-label {
+                font-size: 11px;
+            }
+
+            #errors-container {
+                justify-content: center;
+            }
+
+            .error-sample {
+                padding: 6px;
+                font-size: 11px;
+            }
+        }
     </style>
   <script type="module" crossorigin src="/MNIST/assets/train_and_test-BIIMFeEQ.js"></script>
   <link rel="modulepreload" crossorigin href="/MNIST/assets/MNIST-BhAB_iSj.js">
