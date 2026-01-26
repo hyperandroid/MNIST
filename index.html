@@ -1,0 +1,90 @@
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>WebGPU MNIST</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 24px;
+            background: #f5f6f8;
+            color: #2d3748;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #1a202c;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        h3 {
+            color: #2d3748;
+            font-weight: 600;
+            margin: 0 0 12px 0;
+        }
+
+        p {
+            color: #4a5568;
+            margin: 8px 0;
+        }
+
+        a {
+            color: #2b6cb0;
+            text-decoration: none;
+        }
+
+        a:hover {
+            color: #1a4971;
+            text-decoration: underline;
+        }
+
+        .intro {
+            color: #4a5568;
+            margin-bottom: 24px;
+        }
+
+        .section {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .section h3 {
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+        }
+
+        .section .description {
+            color: #718096;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+<h1>WebGPU MNIST Demo</h1>
+<p class="intro">A neural network trained entirely in-browser using WebGPU compute shaders.</p>
+
+<div class="section">
+    <h3><a href="guess.html">Interactive Digit Recognizer</a></h3>
+    <p>Draw digits with your mouse and watch the pre-trained model predict in real-time. Visualizes data flowing through each layer of the neural network as you draw.</p>
+</div>
+
+<div class="section">
+    <h3><a href="train_and_test.html">Train and Test</a></h3>
+    <p>Train the MNIST model from scratch in your browser. Runs the full training loop on the 60,000 training images, then evaluates accuracy on the 10,000 test images.</p>
+    <p class="description">Runs 15 epochs with batch size 32. On M3 Max: ~8 minutes. With batch size 64: ~4 minutes.</p>
+</div>
+
+</body>
+</html>
